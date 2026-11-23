@@ -2,8 +2,57 @@
 
 A system monitor and disk analyzer for macOS, written in SwiftUI.
 
-Tabs: Summary, Performance, Processes, Sensors, Apple Silicon, Connections,
-System Info, Startup apps, Users, Services, Installed Apps, Drivers and Disk Space.
+![The Summary tab: CPU, power, temperature and GPU meters, a CPU chart, the busiest processes, memory, and tiles for network, disk, fans, the Neural Engine and system pressure](docs/screenshots/summary.png)
+
+## What it does
+
+- **Summary.** One dashboard for CPU, power, temperature, GPU, memory,
+  network, disk, fans, the Neural Engine and overall system pressure, next to
+  the busiest processes. Click the CPU chart to look back in time; click the
+  pressure tile to see what the figure is made of.
+- **Performance.** A page each for CPU, memory, disk, network, GPU, NPU,
+  energy and thermals.
+- **Processes.** Applications and background processes in two groups, as a
+  flat list or a tree. The order stays put, cells light up where numbers
+  change, and a process that quit stays in red for a moment. Choose the
+  columns from the header menu; select a process to see its details, path and
+  command line; quit or force quit it.
+- **Apple Silicon.** A chart for every core of each cluster and for every
+  media engine block: video encode and decode, scalers, JPEG and ProRes.
+- **Sensors.** Every power, temperature and fan reading the Mac reports, with
+  the lowest and highest seen.
+- **Disk Space.** Scan a folder to see what fills it, as a list or a bubble
+  map, and move things to the Trash.
+- **Also** Connections, System Info, Startup apps, Users, Services,
+  Installed Apps and Drivers.
+- **Menu bar.** CPU, GPU and memory percentages and network speed, each with
+  its own switch in Settings. They keep updating with the window closed.
+
+## Screenshots
+
+**Performance**
+
+![The Performance tab on the CPU page: charts for performance and efficiency cores, a meter for every core, and processor facts](docs/screenshots/performance.png)
+
+**Processes**
+
+![The Processes tab: applications and background processes in two groups, with the selected process's path, command and figures under the list](docs/screenshots/processes.png)
+
+**Apple Silicon**
+
+![The Apple Silicon tab: utilization of the performance and efficiency clusters with a small chart for every core, and the media engine blocks](docs/screenshots/apple-silicon.png)
+
+**Sensors**
+
+![The Sensors tab: power, temperature and fan readings with their lowest and highest values](docs/screenshots/sensors.png)
+
+**Users**
+
+![The Users tab: accounts running processes, with their process count, CPU and memory](docs/screenshots/users.png)
+
+**Menu bar**
+
+<img src="docs/screenshots/menu-bar.png" width="165" alt="The menu bar item: CPU, GPU and memory percentages and upload and download speed">
 
 ## Download
 
@@ -104,6 +153,7 @@ Both are optional; the app works without them and says what is missing.
 | `project.yml` | The project definition. `TaskCtrl.xcodeproj` is generated from it. |
 | `CHANGELOG.md` | What changed in each release. |
 | `scripts` | Cutting a release, and drawing the app icon. |
+| `docs/screenshots` | The pictures in this file. |
 | `.github/workflows` | What GitHub runs to build and publish a release. |
 | `TaskCtrl/App` | App entry point and the sidebar. |
 | `TaskCtrl/Features` | One folder per tab: the views. |
