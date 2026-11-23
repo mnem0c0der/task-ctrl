@@ -53,6 +53,10 @@ struct ProcessSample: Sendable, Identifiable, Equatable {
     /// their CPU and memory figures, so `cpu` and `memory` are zero.
     var hasStats: Bool
 
+    /// The app the system holds responsible for this process, for helpers
+    /// that launchd starts on an app's behalf. Zero when the process
+    /// answers for itself or the system does not say.
+    var responsiblePID: pid_t = 0
     /// Zero when unknown.
     var threads = 0
     /// Processor time used since the process started, seconds.
@@ -68,9 +72,24 @@ struct ProcessSample: Sendable, Identifiable, Equatable {
     /// Power the kernel attributes to the process, watts.
     var power: Double = 0
 
+    // The rest is filled in for the process table only.
+
+    /// `cpu` averaged over the last several seconds. Steadier than `cpu`,
+    /// so a list sorted by it does not reshuffle on every sample.
+    var smoothedCPU: Double = 0
+    /// How recently the CPU and memory figures on screen changed: 1 on the
+    /// refresh they changed, fading to 0 over the next few.
+    var cpuHeat: Double = 0
+    var memoryHeat: Double = 0
+    /// True for a process that has just quit and is still listed for a moment.
+    var hasExited = false
+
     /// Adds another process's live figures to this one, for a group total.
     mutating func add(_ other: ProcessSample) {
         cpu += other.cpu
+        smoothedCPU += other.smoothedCPU
+        cpuHeat = max(cpuHeat, other.cpuHeat)
+        memoryHeat = max(memoryHeat, other.memoryHeat)
         memory += other.memory
         threads += other.threads
         diskRead += other.diskRead

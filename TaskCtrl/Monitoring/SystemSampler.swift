@@ -144,6 +144,7 @@ actor SystemSampler {
         let startSeconds: UInt64
         let name: String
         let path: String
+        let responsible: pid_t
     }
 
     private func sampleProcesses(privileged: [pid_t: ProcessUsageRecord]?) -> [ProcessSample] {
@@ -184,7 +185,11 @@ actor SystemSampler {
                     }
                 }
                 if name.isEmpty { name = "pid \(pid)" }
-                identity = Identity(startSeconds: startSeconds, name: name, path: path)
+                let responsible = responsibility_get_pid_responsible_for_pid(pid)
+                identity = Identity(
+                    startSeconds: startSeconds, name: name, path: path,
+                    responsible: responsible > 0 && responsible != pid ? responsible : 0
+                )
             }
             identities[pid] = identity
 
@@ -232,6 +237,7 @@ actor SystemSampler {
                     memory: usage?.footprint ?? 0,
                     hasStats: usage != nil
                 )
+            sample.responsiblePID = identity.responsible
             sample.threads = Int(usage?.threads ?? 0)
             sample.cpuTime = Double(usage?.cpuTime ?? 0) * secondsPerTick
             sample.diskReadTotal = usage?.diskRead ?? 0

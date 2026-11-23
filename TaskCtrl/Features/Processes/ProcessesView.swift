@@ -28,6 +28,15 @@ struct ProcessesView: View {
         var children: [Row]?
     }
 
+    /// Where every process stood the last time the list was put in order,
+    /// so the next ordering can start from there instead of from scratch.
+    /// A class, because it is updated while the rows are being built.
+    private final class OrderMemory {
+        var ranks: [pid_t: Int] = [:]
+        /// The sort settings the ranks were made under.
+        var settings = ""
+    }
+
     private struct PendingAction: Identifiable {
         let action: ProcessControl.Action
         let process: ProcessSample
@@ -44,8 +53,11 @@ struct ProcessesView: View {
     @State private var selection: pid_t?
     @State private var searchText = ""
     @State private var scope: Scope = .all
-    @State private var showsInspector = false
+    @AppStorage("processDetails") private var showsDetails = false
     @AppStorage("processTree") private var showsTree = false
+    @AppStorage("smoothCPUSorting") private var sortsSmoothly = true
+    @AppStorage("showExitedProcesses") private var showsExited = true
+    @State private var order = OrderMemory()
     @State private var pendingAction: PendingAction?
     @State private var errorMessage: String?
 
@@ -53,30 +65,165 @@ struct ProcessesView: View {
     private let ownPID = getpid()
 
     private var visibleProcesses: [ProcessSample] {
-        monitor.tableProcesses
+        (monitor.tableProcesses + (showsExited ? monitor.exitedProcesses : []))
             .filter { scope == .all || $0.uid == currentUID }
             .filter { searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText) }
     }
 
-    private func flatRows(_ processes: [ProcessSample]) -> [Row] {
-        processes
-            .map { Row(id: 0, process: $0) }
-            .sorted(using: sortOrder)
-            .enumerated()
-            .map { Row(id: $0.offset, process: $0.element.process) }
+    /// The list in its two groups: apps with what they started, and the rest.
+    private struct Groups {
+        var applications: [Row] = []
+        var background: [Row] = []
+        /// How many apps are running, and how many processes belong to none.
+        var applicationCount = 0
+        var backgroundCount = 0
+
+        var all: [Row] { applications + background }
     }
 
-    /// Groups processes under the one that started them. Nearly everything is
-    /// started by launchd (pid 1), so its children count as top level;
-    /// otherwise the whole tree would be one group.
-    private func treeRows(_ processes: [ProcessSample]) -> [Row] {
+    /// Splits the processes into the two groups and puts each in order.
+    /// An application is what the Dock would show; everything it started
+    /// counts as part of it.
+    private func groups(_ processes: [ProcessSample]) -> Groups {
+        let apps = Set(
+            NSWorkspace.shared.runningApplications
+                .filter { $0.activationPolicy == .regular }
+                .map(\.processIdentifier)
+        )
+        let owners = owners(of: processes)
+        var known: [pid_t: Bool] = [:]
+        /// Whether the process is an app or belongs, however indirectly, to one.
+        func belongsToApp(_ pid: pid_t) -> Bool {
+            if let answer = known[pid] { return answer }
+            let answer = apps.contains(pid) || (owners[pid].map { belongsToApp($0) } ?? false)
+            known[pid] = answer
+            return answer
+        }
+
+        var groups = Groups()
+        let running = processes.filter { !$0.hasExited }
+        groups.applicationCount = running.count { apps.contains($0.pid) }
+        groups.backgroundCount = running.count { !belongsToApp($0.pid) }
+
+        if showsTree {
+            // A group goes where the process at its top goes.
+            for row in treeRows(processes, owners: owners) {
+                if apps.contains(row.process.pid) {
+                    groups.applications.append(row)
+                } else {
+                    groups.background.append(row)
+                }
+            }
+        } else {
+            let applications = sorted(processes.filter { belongsToApp($0.pid) }.map { Row(id: 0, process: $0) })
+            let background = sorted(processes.filter { !belongsToApp($0.pid) }.map { Row(id: 0, process: $0) })
+            // Positions run through both groups, so every row has its own.
+            groups.applications = applications.enumerated().map { Row(id: $0.offset, process: $0.element.process) }
+            groups.background = background.enumerated().map {
+                Row(id: applications.count + $0.offset, process: $0.element.process)
+            }
+        }
+        return groups
+    }
+
+    // MARK: Ordering
+
+    /// Whether the list is sorted by CPU with smoothing on, and in which direction.
+    private var smoothCPUOrder: SortOrder? {
+        guard sortsSmoothly, let first = sortOrder.first, first.keyPath == \Row.process.cpu else { return nil }
+        return first.order
+    }
+
+    /// Sorts siblings by the current sort order. By CPU with smoothing on,
+    /// rows are ordered by their averaged CPU and keep their places until
+    /// one clearly overtakes another, so the list does not reshuffle on
+    /// every refresh.
+    private func sorted(_ rows: [Row]) -> [Row] {
+        guard let direction = smoothCPUOrder else { return rows.sorted(using: sortOrder) }
+        let sign = direction == .reverse ? 1.0 : -1.0
+        func key(_ row: Row) -> Double { row.process.smoothedCPU * sign }
+
+        guard !order.ranks.isEmpty else {
+            return rows.sorted { (key($0), $1.process.pid) > (key($1), $0.process.pid) }
+        }
+        // Start from where the rows were; new ones go to the end.
+        var settled = rows.sorted {
+            (order.ranks[$0.process.pid] ?? .max, $0.process.pid)
+                < (order.ranks[$1.process.pid] ?? .max, $1.process.pid)
+        }
+        // A row moves up past its neighbour only when it leads by a margin:
+        // half a percent of a core plus a tenth of the neighbour's own load.
+        for index in settled.indices.dropFirst() {
+            var position = index
+            while position > 0 {
+                let above = key(settled[position - 1])
+                guard key(settled[position]) > above + 0.5 + abs(above) * 0.1 else { break }
+                settled.swapAt(position, position - 1)
+                position -= 1
+            }
+        }
+        return settled
+    }
+
+    /// Remembers the order just shown, for the next refresh to start from.
+    private func remember(_ rows: [Row]) {
+        let settings = "\(showsTree)-\(smoothCPUOrder.map { "\($0)" } ?? "plain")"
+        var ranks: [pid_t: Int] = [:]
+        if smoothCPUOrder != nil {
+            func visit(_ rows: [Row]) {
+                for row in rows {
+                    ranks[row.process.pid] = ranks.count
+                    visit(row.children ?? [])
+                }
+            }
+            visit(rows)
+        }
+        order.ranks = ranks
+        order.settings = settings
+    }
+
+    /// Ranks made under other sort settings say nothing about this order.
+    private func forgetStaleOrder() {
+        let settings = "\(showsTree)-\(smoothCPUOrder.map { "\($0)" } ?? "plain")"
+        if order.settings != settings { order.ranks = [:] }
+    }
+
+    /// The process each one belongs under: the one that started it or, for a
+    /// helper that launchd started on an app's behalf, that app. Nearly
+    /// everything is started by launchd (pid 1), so its children have no
+    /// owner; otherwise the whole list would be one group.
+    private func owners(of processes: [ProcessSample]) -> [pid_t: pid_t] {
         let known = Set(processes.map(\.pid))
+        var owners: [pid_t: pid_t] = [:]
+        for process in processes {
+            for candidate in [process.parentPID, process.responsiblePID]
+            where candidate > 1 && candidate != process.pid && known.contains(candidate) {
+                owners[process.pid] = candidate
+                break
+            }
+        }
+        // Mixing the two kinds of link could in theory close a loop, which
+        // would hide everything in it. A process whose chain does not end
+        // stands on its own.
+        for process in processes {
+            var current = process.pid
+            var steps = 0
+            while let next = owners[current], steps <= 64 {
+                current = next
+                steps += 1
+            }
+            if steps > 64 { owners[process.pid] = nil }
+        }
+        return owners
+    }
+
+    /// Groups processes under their owners.
+    private func treeRows(_ processes: [ProcessSample], owners: [pid_t: pid_t]) -> [Row] {
         var childrenOf: [pid_t: [ProcessSample]] = [:]
         var roots: [ProcessSample] = []
         for process in processes {
-            let parent = process.parentPID
-            if parent > 1, parent != process.pid, known.contains(parent) {
-                childrenOf[parent, default: []].append(process)
+            if let owner = owners[process.pid] {
+                childrenOf[owner, default: []].append(process)
             } else {
                 roots.append(process)
             }
@@ -97,10 +244,10 @@ struct ProcessesView: View {
                 id: Int(process.pid),
                 process: total,
                 descendantCount: descendants,
-                children: children.isEmpty ? nil : children.sorted(using: sortOrder)
+                children: children.isEmpty ? nil : sorted(children)
             )
         }
-        return roots.map { row(for: $0, depth: 0) }.sorted(using: sortOrder)
+        return sorted(roots.map { row(for: $0, depth: 0) })
     }
 
     private func pid(forRow id: Int, in rows: [Row]) -> pid_t? {
@@ -119,28 +266,39 @@ struct ProcessesView: View {
         )
     }
 
+    /// The selected process, including one that has just quit and is still listed.
     private var selected: ProcessSample? {
         guard let selection else { return nil }
         return monitor.tableProcesses.first { $0.pid == selection }
+            ?? monitor.exitedProcesses.first { $0.pid == selection }
     }
 
     /// Other users' processes can only be signalled through the root helper.
     private func canSignal(_ process: ProcessSample?) -> Bool {
-        guard let process, process.pid > 1, process.pid != ownPID else { return false }
+        guard let process, !process.hasExited, process.pid > 1, process.pid != ownPID else { return false }
         return process.uid == currentUID || helper.isEnabled
     }
 
     var body: some View {
         let visible = visibleProcesses
-        let rows = showsTree ? treeRows(visible) : flatRows(visible)
+        let _ = forgetStaleOrder()
+        let groups = groups(visible)
+        let rows = groups.all
+        let _ = remember(rows)
 
-        Table(rows, children: \.children, selection: rowSelection(in: rows), sortOrder: $sortOrder) {
+        Table(of: Row.self, selection: rowSelection(in: rows), sortOrder: $sortOrder) {
             TableColumn("Name", value: \.process.name) { row in
                 let process = row.process
                 HStack(spacing: 6) {
                     ProcessIcon(path: process.path)
                     Text(process.name)
                         .lineLimit(1)
+                        .foregroundStyle(process.hasExited ? .red : .primary)
+                    if process.hasExited {
+                        Text("exited")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                     if row.descendantCount > 0 {
                         // The figures in this row cover the whole group.
                         Text("+\(row.descendantCount)")
@@ -166,7 +324,8 @@ struct ProcessesView: View {
                 let process = row.process
                 Text(process.hasStats ? (process.cpu / 100).percentFormatted : "—")
                     .monospacedDigit()
-                    .foregroundStyle(process.hasStats ? .primary : .tertiary)
+                    .foregroundStyle(process.hasStats && !process.hasExited ? .primary : .tertiary)
+                    .modifier(ChangeHighlight(heat: process.cpuHeat))
             }
             .width(min: 60, ideal: 80, max: 110)
 
@@ -174,7 +333,8 @@ struct ProcessesView: View {
                 let process = row.process
                 Text(process.hasStats ? process.memory.memoryFormatted : "—")
                     .monospacedDigit()
-                    .foregroundStyle(process.hasStats ? .primary : .tertiary)
+                    .foregroundStyle(process.hasStats && !process.hasExited ? .primary : .tertiary)
+                    .modifier(ChangeHighlight(heat: process.memoryHeat))
             }
             .width(min: 80, ideal: 100, max: 130)
 
@@ -205,6 +365,17 @@ struct ProcessesView: View {
                     .foregroundStyle(process.hasStats && process.power >= 0.001 ? .primary : .tertiary)
             }
             .width(min: 60, ideal: 76, max: 100)
+        } rows: {
+            Section {
+                OutlineGroup(groups.applications, children: \.children) { TableRow($0) }
+            } header: {
+                groupHeader("Applications (\(groups.applicationCount))")
+            }
+            Section {
+                OutlineGroup(groups.background, children: \.children) { TableRow($0) }
+            } header: {
+                groupHeader("Background processes (\(groups.backgroundCount))")
+            }
         }
         // Row identities mean different things in the two modes (position
         // or pid), so switching builds a fresh table instead of diffing.
@@ -224,15 +395,24 @@ struct ProcessesView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if helper.state != .enabled {
-                VStack(spacing: 0) {
+            VStack(spacing: 0) {
+                if showsDetails {
+                    Divider()
+                    ProcessDetails(
+                        process: selected,
+                        parentName: selected.flatMap { process in
+                            monitor.tableProcesses.first { $0.pid == process.parentPID }?.name
+                        }
+                    )
+                }
+                if helper.state != .enabled {
                     Divider()
                     HelperStatusView()
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                 }
-                .background(.bar)
             }
+            .background(Dashboard.pageFill)
         }
         // Another tab asked to show a particular process.
         .task(id: navigation.processToReveal) {
@@ -240,12 +420,12 @@ struct ProcessesView: View {
             searchText = ""
             scope = .all
             selection = pid
-            showsInspector = true
+            showsDetails = true
             navigation.processToReveal = nil
         }
         .searchable(text: $searchText, prompt: "Filter by name")
         .navigationTitle("Processes")
-        .navigationSubtitle("\(visible.count) of \(monitor.tableProcesses.count)")
+        .navigationSubtitle("\(visible.count { !$0.hasExited }) of \(monitor.tableProcesses.count)")
         .toolbar {
             ToolbarItem {
                 Picker("Show", selection: $scope) {
@@ -254,8 +434,12 @@ struct ProcessesView: View {
                 .pickerStyle(.segmented)
             }
             ToolbarItem {
-                Toggle("Tree", systemImage: "list.bullet.indent", isOn: $showsTree)
-                    .help("Group processes under the app that started them")
+                Menu("Process View", systemImage: "list.bullet.indent") {
+                    Toggle("Process Tree", isOn: $showsTree)
+                    Toggle("Smooth CPU Sorting", isOn: $sortsSmoothly)
+                    Toggle("Show Exited Processes", isOn: $showsExited)
+                }
+                .help("How the list is grouped and ordered")
             }
             ToolbarItemGroup {
                 Button("Quit", systemImage: "xmark.circle") {
@@ -271,18 +455,9 @@ struct ProcessesView: View {
                 .disabled(!canSignal(selected))
             }
             ToolbarItem {
-                Toggle("Info", systemImage: "info.circle", isOn: $showsInspector)
-                    .help("Show details of the selected process")
+                Toggle("Info", systemImage: "info.circle", isOn: $showsDetails)
+                    .help("Show details of the selected process below the list")
             }
-        }
-        .inspector(isPresented: $showsInspector) {
-            ProcessInspector(
-                process: selected,
-                parentName: selected.flatMap { process in
-                    monitor.tableProcesses.first { $0.pid == process.parentPID }?.name
-                }
-            )
-            .inspectorColumnWidth(min: 240, ideal: 280, max: 360)
         }
         .confirmationDialog(
             pendingAction.map { title(for: $0) } ?? "",
@@ -317,6 +492,13 @@ struct ProcessesView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+    }
+
+    private func groupHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(.primary)
+            .padding(.vertical, 3)
     }
 
     /// A throughput cell; idle values are dimmed so busy rows stand out.
@@ -360,74 +542,119 @@ struct ProcessesView: View {
     }
 }
 
-private struct ProcessInspector: View {
+/// Lights a cell up when its number has just changed and lets it fade over
+/// the next refreshes. The fade is in steps with the data, not animated:
+/// animating a thousand cells would cost more than everything else here.
+private struct ChangeHighlight: ViewModifier {
+    let heat: Double
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.green.opacity(heat * 0.42), in: .rect(cornerRadius: 3))
+    }
+}
+
+/// Facts and figures of the selected process, in a strip under the list.
+private struct ProcessDetails: View {
     let process: ProcessSample?
     let parentName: String?
 
     var body: some View {
-        if let process {
-            Form {
-                Section {
-                    HStack(spacing: 8) {
-                        ProcessIcon(path: process.path)
-                        Text(process.name)
-                            .font(.headline)
-                            .lineLimit(2)
-                    }
-                }
-                Section("Process") {
-                    LabeledContent("PID", value: String(process.pid))
-                    LabeledContent(
-                        "Parent",
-                        value: "\(parentName ?? "unknown") (\(String(process.parentPID)))"
-                    )
-                    LabeledContent("User", value: process.user)
-                    LabeledContent(
-                        "Started",
-                        value: process.startDate.formatted(date: .abbreviated, time: .standard)
-                    )
-                }
-                Section("Usage") {
-                    if process.hasStats {
-                        LabeledContent("CPU", value: (process.cpu / 100).percentFormatted)
-                        LabeledContent("CPU time", value: process.cpuTime.cpuTimeFormatted)
-                        LabeledContent("Memory", value: process.memory.memoryFormatted)
-                        LabeledContent("Threads", value: process.threads > 0 ? String(process.threads) : "—")
-                        LabeledContent("Power", value: process.power.smallPowerFormatted)
-                    } else {
-                        Text("CPU and memory of other users’ processes are hidden until the helper is installed.")
+        Group {
+            if let process {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(process.name) (\(String(process.pid)))")
+                            .font(.title3.weight(.semibold))
+                            .lineLimit(1)
+                        Text(process.path.isEmpty ? "Path not disclosed" : process.path)
                             .font(.callout)
                             .foregroundStyle(.secondary)
-                    }
-                }
-                if process.hasStats {
-                    Section("Disk") {
-                        LabeledContent("Reading", value: process.diskRead.rateFormatted)
-                        LabeledContent("Writing", value: process.diskWrite.rateFormatted)
-                        LabeledContent("Read in total", value: process.diskReadTotal.storageFormatted)
-                        LabeledContent("Written in total", value: process.diskWrittenTotal.storageFormatted)
-                    }
-                }
-                Section("Network") {
-                    LabeledContent("Receiving", value: process.networkIn.rateFormatted)
-                    LabeledContent("Sending", value: process.networkOut.rateFormatted)
-                }
-                if !process.path.isEmpty {
-                    Section("Path") {
-                        Text(process.path)
-                            .font(.callout)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
                             .textSelection(.enabled)
+                    }
+                    HStack(alignment: .top, spacing: 20) {
+                        DetailColumn(title: "Identity", rows: [
+                            ("Parent", "\(parentName ?? "unknown") (\(String(process.parentPID)))"),
+                            ("User", process.user),
+                            ("Status", process.hasExited ? "Exited" : "Running"),
+                        ])
+                        DetailColumn(title: "Lifetime", rows: [
+                            ("Started", process.startDate.formatted(date: .abbreviated, time: .shortened)),
+                            ("Uptime", uptime(of: process)),
+                            ("Threads", process.threads > 0 ? String(process.threads) : unavailable),
+                        ])
+                        DetailColumn(title: "Processor", rows: [
+                            ("CPU", measured(process) { ($0.cpu / 100).percentFormatted }),
+                            ("CPU time", measured(process) { $0.cpuTime.cpuTimeFormatted }),
+                            ("Power", measured(process) { $0.power.smallPowerFormatted }),
+                        ])
+                        DetailColumn(title: "Memory", rows: [
+                            ("Footprint", measured(process) { $0.memory.memoryFormatted }),
+                        ])
+                        DetailColumn(title: "Disk", rows: [
+                            ("Reading", measured(process) { $0.diskRead.rateFormatted }),
+                            ("Writing", measured(process) { $0.diskWrite.rateFormatted }),
+                            ("Read", measured(process) { $0.diskReadTotal.storageFormatted }),
+                            ("Written", measured(process) { $0.diskWrittenTotal.storageFormatted }),
+                        ])
+                        DetailColumn(title: "Network", rows: [
+                            ("Receiving", process.networkIn.rateFormatted),
+                            ("Sending", process.networkOut.rateFormatted),
+                        ])
+                    }
+                }
+            } else {
+                Text("Select a process to see its details.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private let unavailable = "Unavailable"
+
+    /// Figures of other users' processes are hidden until the helper is installed.
+    private func measured(_ process: ProcessSample, _ text: (ProcessSample) -> String) -> String {
+        process.hasStats ? text(process) : unavailable
+    }
+
+    private func uptime(of process: ProcessSample) -> String {
+        Duration.seconds(max(Date().timeIntervalSince(process.startDate), 0))
+            .formatted(.units(allowed: [.days, .hours, .minutes, .seconds], width: .narrow, maximumUnitCount: 2))
+    }
+}
+
+/// One titled group of facts in the details strip.
+private struct DetailColumn: View {
+    let title: String
+    let rows: [(name: String, value: String)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title.uppercased())
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 3) {
+                ForEach(rows, id: \.name) { row in
+                    GridRow {
+                        Text(row.name)
+                            .foregroundStyle(.secondary)
+                        Text(row.value)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .truncationMode(.middle)
                     }
                 }
             }
-            .formStyle(.grouped)
-            .monospacedDigit()
-        } else {
-            ContentUnavailableView(
-                "No process selected",
-                systemImage: "cursorarrow.click",
-                description: Text("Select a row to see its details.")
-            )
+            .font(.callout)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

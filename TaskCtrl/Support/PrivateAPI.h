@@ -30,4 +30,11 @@ int32_t IOReportStateGetCount(CFDictionaryRef channel);
 CFStringRef _Nullable IOReportStateGetNameForIndex(CFDictionaryRef channel, int32_t index) CF_RETURNS_NOT_RETAINED;
 int64_t IOReportStateGetResidency(CFDictionaryRef channel, int32_t index);
 
+// MARK: Process responsibility
+
+// The process the system holds responsible for another: the app behind a
+// helper that launchd started on its behalf. Returns the pid itself for a
+// process that answers for itself, and -1 when it cannot tell.
+pid_t responsibility_get_pid_responsible_for_pid(pid_t pid);
+
 CF_ASSUME_NONNULL_END
