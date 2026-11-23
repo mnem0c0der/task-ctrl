@@ -33,6 +33,7 @@
 		648C33A9FD35EE41B7B9FDCE /* DiskBubblesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 650F738E06EC0785878740C3 /* DiskBubblesView.swift */; };
 		656F3DE375A0497A1A2F89E6 /* PerformanceComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 266D061CF24E21B4A1AD8D44 /* PerformanceComponents.swift */; };
 		723F705184A2757661D04C66 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0383606A7504FDEF9CA3A23 /* Models.swift */; };
+		7258415C8F7A6DA5D70FC5EF /* MenuBarReadout.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2AF80555A76CA434F1F74FD /* MenuBarReadout.swift */; };
 		7503F333507999C9F53687E0 /* StartupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B52CC5E34E01F5F030AFE39 /* StartupView.swift */; };
 		79A757933A8805B8AD4BB485 /* ActivitySampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26BED10698983A667E00C5C0 /* ActivitySampler.swift */; };
 		7A462D41E95E876D3D4D3CCB /* PerformanceDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EF06793C2760DE4E3749771 /* PerformanceDetails.swift */; };
@@ -148,6 +149,7 @@
 		A9A7555EE1D3F9CF68631185 /* UsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsersView.swift; sourceTree = "<group>"; };
 		B16F6B715E674FF39D2C80D7 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		B254CB090AB618CF2753BDA0 /* ScrollingChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollingChart.swift; sourceTree = "<group>"; };
+		B2AF80555A76CA434F1F74FD /* MenuBarReadout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarReadout.swift; sourceTree = "<group>"; };
 		B343B106276C6A226800063E /* InstalledAppsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledAppsView.swift; sourceTree = "<group>"; };
 		B521B236B379375079F0D0F3 /* ProcessIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessIcon.swift; sourceTree = "<group>"; };
 		B56BD789291FD4C253CBAC45 /* ProcessControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessControl.swift; sourceTree = "<group>"; };
@@ -355,6 +357,14 @@
 			path = SystemInfo;
 			sourceTree = "<group>";
 		};
+		7C4A31CCD5E4FF05D4FFB6C7 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				B2AF80555A76CA434F1F74FD /* MenuBarReadout.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
 		8D65CF9BD061D32D6CBDB777 /* Startup */ = {
 			isa = PBXGroup;
 			children = (
@@ -375,6 +385,7 @@
 				E01830C6EDA26EAC338826A7 /* Disk */,
 				A9B84CA01FA078086D1B1A5A /* Drivers */,
 				E448D146AC6C854AC027676D /* Helper */,
+				7C4A31CCD5E4FF05D4FFB6C7 /* MenuBar */,
 				E0A42C5F48A3C9087703B7ED /* Performance */,
 				F98D18BC7A0C846386D3AF8D /* Processes */,
 				2E779C878CC0900DD04C0F52 /* Sensors */,
@@ -595,6 +606,7 @@
 				1A599F8896C6C3038EBA585C /* Launchd.swift in Sources */,
 				2962AE013BC3152E9F077735 /* LayerAnimations.swift in Sources */,
 				196F675DE4C4404C3535917D /* MediaEngineReader.swift in Sources */,
+				7258415C8F7A6DA5D70FC5EF /* MenuBarReadout.swift in Sources */,
 				723F705184A2757661D04C66 /* Models.swift in Sources */,
 				95F80FC8C5EDF865B106BDAE /* NeuralEngineReader.swift in Sources */,
 				656F3DE375A0497A1A2F89E6 /* PerformanceComponents.swift in Sources */,

@@ -13,9 +13,10 @@ struct TaskCtrlApp: App {
     @State private var connections = ConnectionsModel()
     @State private var installedApps = InstalledAppsModel()
     @State private var drivers = DriversModel()
+    @AppStorage(MenuBarSettings.isShownKey) private var showsMenuBarReadout = true
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: MenuBarMenu.windowID) {
             RootView()
                 .environment(monitor)
                 .environment(diskScan)
@@ -28,6 +29,7 @@ struct TaskCtrlApp: App {
                 .environment(installedApps)
                 .environment(drivers)
                 .frame(minWidth: 1040, minHeight: 620)
+                .background(MainWindowTracker())
                 // The dashboard is designed as a dark instrument panel.
                 .preferredColorScheme(.dark)
                 .task { monitor.start() }
@@ -41,6 +43,13 @@ struct TaskCtrlApp: App {
         Settings {
             SettingsView()
                 .environment(helper)
+        }
+
+        MenuBarExtra(isInserted: $showsMenuBarReadout) {
+            MenuBarMenu()
+        } label: {
+            MenuBarReadout()
+                .environment(monitor)
         }
     }
 }

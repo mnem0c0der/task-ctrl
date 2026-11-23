@@ -63,8 +63,13 @@ struct HelperStatusView: View {
 }
 
 struct SettingsView: View {
+    @AppStorage(MenuBarSettings.isShownKey) private var showsMenuBarReadout = true
+
     var body: some View {
         Form {
+            Section("Menu bar") {
+                Toggle("Show CPU, GPU and memory in the menu bar", isOn: $showsMenuBarReadout)
+            }
             Section("Privileged helper") {
                 HelperStatusView()
             }
