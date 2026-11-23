@@ -28,7 +28,10 @@ xcodegen generate >/dev/null
 git add project.yml TaskCtrl.xcodeproj
 git diff --cached --quiet || git commit -q -m "Release $version"
 git tag -a "$tag" -m "TaskCtrl $version"
-git push origin main "$tag"
+# The tag goes in a push of its own: sent together with the branch, GitHub
+# has been seen not to start the build for it.
+git push origin main
+git push origin "$tag"
 
 echo "Pushed $tag. The release appears on GitHub once the build finishes:"
 echo "  $(git remote get-url origin | sed 's/\.git$//')/actions"

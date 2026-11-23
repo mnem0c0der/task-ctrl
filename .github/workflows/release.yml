@@ -2,9 +2,17 @@ name: Release
 
 # Builds the app and publishes it as a GitHub release when a version tag is
 # pushed. The tag is made by scripts/release.sh.
+#
+# It can also be started by hand from the Actions page for a tag that is
+# already there, for the case where pushing the tag did not start it.
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and publish, e.g. v1.0.0"
+        required: true
 
 permissions:
   contents: write
@@ -12,8 +20,12 @@ permissions:
 jobs:
   release:
     runs-on: macos-26
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Select the newest Xcode
         run: |
@@ -24,8 +36,8 @@ jobs:
       - name: Check that the tag matches the version
         run: |
           version=$(sed -n 's/^ *MARKETING_VERSION: *"\(.*\)"/\1/p' project.yml)
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match version $version in project.yml"
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::Tag $TAG does not match version $version in project.yml"
             exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
@@ -58,6 +70,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "$TAG" \
             "TaskCtrl-$VERSION.zip" "TaskCtrl-$VERSION.zip.sha256" \
             --title "TaskCtrl $VERSION" --notes-file notes.md

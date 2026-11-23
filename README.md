@@ -151,6 +151,9 @@ The tag starts a build on GitHub, which publishes `TaskCtrl-0.2.0.zip` and its
 checksum on the Releases page, with the changelog section as the notes. The
 build takes a few minutes; its progress is on the repository's Actions page.
 
+If no build starts for a tag, start it by hand: on the Actions page choose
+Release, then Run workflow, and enter the tag.
+
 ## Notes
 
 - The app is not sandboxed: reading other processes and scanning the whole
