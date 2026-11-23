@@ -38,7 +38,9 @@
 		7B0DD9995F9F5093B4E5D3BA /* HardwareInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CFA6CD05CCB661130B00D54 /* HardwareInfo.swift */; };
 		806C10C311D13E846C9A68C3 /* DiskNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87EE20C34DE22D6ABD257AD /* DiskNode.swift */; };
 		8149DAD9ACA3677DD4984991 /* AppleSiliconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B13C1D30DC76B4FF9958668 /* AppleSiliconView.swift */; };
+		8CA0FFB311EC392B7058FEAD /* PressureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A122078FA1A947DEDFE71AD1 /* PressureView.swift */; };
 		93A7CBA9792C731DA37BAF87 /* ProcessesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E94882709DA6C5AC2526A18A /* ProcessesView.swift */; };
+		97F379713D373FEA4ED76926 /* SystemPressure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B10E2E3003B68B0014F173A /* SystemPressure.swift */; };
 		9A6DD438C79D7AA13CF9A51D /* SensorTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 247FC176814D46BFF2FEA64E /* SensorTree.swift */; };
 		9FA39D918BC9E3180F21B363 /* HelperClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B1993D67165E2010E9A21E /* HelperClient.swift */; };
 		A6E0888E836ACDE829AB94C8 /* SystemInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE4AC44EDB35F2B4839F7F0 /* SystemInfoView.swift */; };
@@ -128,6 +130,7 @@
 		5EF5EED7D4868EED7F82777F /* DiskAnalyzerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskAnalyzerView.swift; sourceTree = "<group>"; };
 		641DFF3645FA8FE40546E827 /* HelperProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperProtocol.swift; sourceTree = "<group>"; };
 		650F738E06EC0785878740C3 /* DiskBubblesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskBubblesView.swift; sourceTree = "<group>"; };
+		7B10E2E3003B68B0014F173A /* SystemPressure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemPressure.swift; sourceTree = "<group>"; };
 		7F0C63C9FA89D757D06F6744 /* DriversModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriversModel.swift; sourceTree = "<group>"; };
 		834A9FD1FAC77724AF43672A /* ConnectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionsView.swift; sourceTree = "<group>"; };
 		84FBB18BD913627DD0F5C690 /* TaskCtrlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCtrlApp.swift; sourceTree = "<group>"; };
@@ -135,6 +138,7 @@
 		8872493BEABBDECBF166A661 /* PrivateAPI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrivateAPI.h; sourceTree = "<group>"; };
 		926992AC8D8F64C2E26DA4E2 /* InstalledAppsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledAppsModel.swift; sourceTree = "<group>"; };
 		A0383606A7504FDEF9CA3A23 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		A122078FA1A947DEDFE71AD1 /* PressureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PressureView.swift; sourceTree = "<group>"; };
 		A1897BDEED97C53D05D31C3B /* AdminAuthorization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAuthorization.swift; sourceTree = "<group>"; };
 		A22DBBC5EB769788881A64F1 /* ServiceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceController.swift; sourceTree = "<group>"; };
 		A87EE20C34DE22D6ABD257AD /* DiskNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskNode.swift; sourceTree = "<group>"; };
@@ -207,6 +211,7 @@
 				247FC176814D46BFF2FEA64E /* SensorTree.swift */,
 				EB35A984ABC6CB44E24FE62D /* SMC.swift */,
 				C9C7F14865067538BAF0DC62 /* SystemMonitor.swift */,
+				7B10E2E3003B68B0014F173A /* SystemPressure.swift */,
 				DE4B39E2AD42AE83F31B6A06 /* SystemSampler.swift */,
 				5967E7B2765CF6FA9BBE5AD9 /* UserAccount.swift */,
 			);
@@ -235,6 +240,7 @@
 			children = (
 				339C804F9EB87A0DBC6175E0 /* DashboardComponents.swift */,
 				D110BC553BF0BB469736956F /* LayerAnimations.swift */,
+				A122078FA1A947DEDFE71AD1 /* PressureView.swift */,
 				B254CB090AB618CF2753BDA0 /* ScrollingChart.swift */,
 				BE6FA88D657F6A816CE020DB /* SummaryView.swift */,
 			);
@@ -586,6 +592,7 @@
 				656F3DE375A0497A1A2F89E6 /* PerformanceComponents.swift in Sources */,
 				7A462D41E95E876D3D4D3CCB /* PerformanceDetails.swift in Sources */,
 				577777599BF8D4B417E1DEC5 /* PerformanceView.swift in Sources */,
+				8CA0FFB311EC392B7058FEAD /* PressureView.swift in Sources */,
 				B41D2278BEE7B8A1CA962DE4 /* ProcessControl.swift in Sources */,
 				F69A20CDFBBA2D431B148EAB /* ProcessIcon.swift in Sources */,
 				F49A5D033C9455AF568076B8 /* ProcessNetworkMonitor.swift in Sources */,
@@ -605,6 +612,7 @@
 				61AB7B67E66C4FDD24F49592 /* SystemInfoModel.swift in Sources */,
 				A6E0888E836ACDE829AB94C8 /* SystemInfoView.swift in Sources */,
 				BBE3C1F34F30E8BDDD5423A7 /* SystemMonitor.swift in Sources */,
+				97F379713D373FEA4ED76926 /* SystemPressure.swift in Sources */,
 				5108EAA29B333CAAC6C25D6B /* SystemSampler.swift in Sources */,
 				CDC98F893F16B97469DA0C53 /* TaskCtrlApp.swift in Sources */,
 				C39B51AF0A3BE9A4EA0874ED /* UserAccount.swift in Sources */,

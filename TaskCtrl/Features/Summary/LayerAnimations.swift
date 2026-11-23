@@ -17,9 +17,13 @@ struct SegmentMeter: View {
     let tint: Color
     var segments = 28
     var axis: Axis = .vertical
+    /// Colours to run along the meter from empty to full, in place of the one tint.
+    var scale: [Color] = []
 
     var body: some View {
-        SegmentMeterLayer(fraction: fraction, tint: tint, segments: segments, axis: axis)
+        SegmentMeterLayer(fraction: fraction, tint: tint, segments: segments, axis: axis, scale: scale)
+            // Nothing to click here; let a surrounding button have the mouse.
+            .allowsHitTesting(false)
             .accessibilityElement()
             .accessibilityValue(Text(fraction.formatted(.percent.precision(.fractionLength(0)))))
     }
@@ -30,6 +34,7 @@ private struct SegmentMeterLayer: NSViewRepresentable {
     let tint: Color
     let segments: Int
     let axis: Axis
+    let scale: [Color]
 
     func makeNSView(context: Context) -> SegmentMeterView {
         SegmentMeterView()
@@ -39,6 +44,7 @@ private struct SegmentMeterLayer: NSViewRepresentable {
         view.tint = NSColor(tint)
         view.segments = segments
         view.isVertical = axis == .vertical
+        view.scale = scale.map { NSColor($0) }
         view.setFraction(fraction)
     }
 }
@@ -47,6 +53,8 @@ final class SegmentMeterView: NSView {
     var tint = NSColor.systemGreen { didSet { if tint != oldValue { needsLayout = true } } }
     var segments = 28 { didSet { if segments != oldValue { needsLayout = true } } }
     var isVertical = true { didSet { if isVertical != oldValue { needsLayout = true } } }
+    /// Colours from empty to full; empty means the plain tint.
+    var scale: [NSColor] = [] { didSet { if scale != oldValue { needsLayout = true } } }
 
     private static let gap = 2.0
     /// Time for the reading to move by one segment.
@@ -56,6 +64,11 @@ final class SegmentMeterView: NSView {
     private let litLayer = CAShapeLayer()
     /// Uncovers the lit segments; its length is what animates.
     private let cover = CALayer()
+    /// With a colour scale the segment shapes cut these gradients out instead
+    /// of being filled themselves.
+    private let dimGradient = CAGradientLayer()
+    private let litGradient = CAGradientLayer()
+    private let litHolder = CALayer()
     private var lit = 0
 
     override var isFlipped: Bool { true }
@@ -64,9 +77,27 @@ final class SegmentMeterView: NSView {
         super.init(frame: frame)
         wantsLayer = true
         cover.backgroundColor = NSColor.black.cgColor
-        litLayer.mask = cover
-        layer?.addSublayer(dimLayer)
-        layer?.addSublayer(litLayer)
+        dimGradient.opacity = 0.24
+    }
+
+    /// Puts the layers together for a plain or a colour-scale meter.
+    private func arrangeLayers() {
+        let wanted: [CALayer] = scale.isEmpty ? [dimLayer, litLayer] : [dimGradient, litHolder]
+        guard layer?.sublayers.map({ $0.elementsEqual(wanted, by: ===) }) != true else { return }
+
+        for used in [dimLayer, litLayer, dimGradient, litGradient, litHolder] {
+            used.removeFromSuperlayer()
+            used.mask = nil
+        }
+        if scale.isEmpty {
+            litLayer.mask = cover
+        } else {
+            dimGradient.mask = dimLayer
+            litGradient.mask = litLayer
+            litHolder.addSublayer(litGradient)
+            litHolder.mask = cover
+        }
+        wanted.forEach { layer?.addSublayer($0) }
     }
 
     @available(*, unavailable)
@@ -112,9 +143,25 @@ final class SegmentMeterView: NSView {
                 path.addRoundedRect(in: bar, cornerWidth: min(1.5, bar.width / 2), cornerHeight: min(1.5, bar.height / 2))
             }
         }
+        arrangeLayers()
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            dimLayer.fillColor = tint.withAlphaComponent(0.16).cgColor
-            litLayer.fillColor = tint.cgColor
+            if scale.isEmpty {
+                dimLayer.fillColor = tint.withAlphaComponent(0.16).cgColor
+                litLayer.fillColor = tint.cgColor
+            } else {
+                // As masks only their shape matters.
+                dimLayer.fillColor = NSColor.black.cgColor
+                litLayer.fillColor = NSColor.black.cgColor
+                let colors = scale.map(\.cgColor)
+                for gradient in [dimGradient, litGradient] {
+                    gradient.colors = colors
+                    gradient.frame = bounds
+                    // Empty end first: the bottom of a vertical meter, the left of a horizontal one.
+                    gradient.startPoint = isVertical ? CGPoint(x: 0.5, y: 1) : CGPoint(x: 0, y: 0.5)
+                    gradient.endPoint = isVertical ? CGPoint(x: 0.5, y: 0) : CGPoint(x: 1, y: 0.5)
+                }
+                litHolder.frame = bounds
+            }
         }
         for shape in [dimLayer, litLayer] {
             shape.frame = bounds

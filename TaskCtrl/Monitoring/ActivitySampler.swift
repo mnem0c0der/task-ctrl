@@ -10,6 +10,9 @@ struct ActivityReadings: Sendable, Equatable {
     var diskRead: Double = 0
     var diskWrite: Double = 0
 
+    /// The storage device that worked hardest over the last interval.
+    var storage = StorageActivity()
+
     /// One-minute load average: how many threads want a core at once.
     var loadAverage: Double = 0
     var memoryPressure: MemoryPressure = .normal
@@ -19,12 +22,36 @@ struct ActivityReadings: Sendable, Equatable {
     }
 }
 
+struct StorageActivity: Sendable, Equatable {
+    /// Product name of the device, e.g. "APPLE SSD AP1024Z"; empty when unknown.
+    var name = ""
+    /// Bytes per second.
+    var read: Double = 0
+    var write: Double = 0
+    /// Share of the interval the device spent serving requests, 0...1.
+    var busy: Double = 0
+    /// Average time one request took, seconds; zero when there were none.
+    var latency: TimeInterval = 0
+}
+
 /// Turns cumulative byte counters into rates. Not thread-safe; `SystemSampler`
 /// keeps it inside its actor.
 final class ActivitySampler {
     private var lastTime: ContinuousClock.Instant?
     private var lastNetwork: [String: (received: UInt32, sent: UInt32)] = [:]
-    private var lastDisk: (read: UInt64, written: UInt64)?
+    private var lastDisks: [UInt64: DiskCounters] = [:]
+    /// Product names by registry entry; nil for devices that are not counted.
+    /// Neither changes while a device is attached.
+    private var diskNames: [UInt64: String?] = [:]
+
+    /// Cumulative figures of one storage driver since boot.
+    private struct DiskCounters {
+        var read: UInt64 = 0
+        var written: UInt64 = 0
+        /// Nanoseconds spent in requests, and how many requests there were.
+        var time: UInt64 = 0
+        var operations: UInt64 = 0
+    }
 
     func sample() -> ActivityReadings {
         var readings = ActivityReadings()
@@ -36,7 +63,7 @@ final class ActivitySampler {
         lastTime = now
 
         let network = networkCounters()
-        let disk = diskCounters()
+        let disks = diskCounters()
         if let seconds, seconds > 0 {
             for (name, current) in network {
                 guard let previous = lastNetwork[name] else { continue }
@@ -44,14 +71,10 @@ final class ActivitySampler {
                 readings.networkIn += Double(current.received &- previous.received) / seconds
                 readings.networkOut += Double(current.sent &- previous.sent) / seconds
             }
-            if let disk, let previous = lastDisk,
-               disk.read >= previous.read, disk.written >= previous.written {
-                readings.diskRead = Double(disk.read - previous.read) / seconds
-                readings.diskWrite = Double(disk.written - previous.written) / seconds
-            }
         }
+        readings.storage = storageActivity(disks, over: seconds, totals: &readings)
         lastNetwork = network
-        lastDisk = disk
+        lastDisks = disks
 
         var load = [Double](repeating: 0, count: 3)
         if getloadavg(&load, 3) > 0 { readings.loadAverage = load[0] }
@@ -92,26 +115,89 @@ final class ActivitySampler {
         return counters
     }
 
-    /// Total bytes read and written across all storage drivers since boot.
-    private func diskCounters() -> (read: UInt64, written: UInt64)? {
+    /// Adds every device's throughput to `totals` and returns the figures of
+    /// the one that was busiest. While all are idle that is the device that
+    /// has worked most since boot, which is the startup disk in practice.
+    private func storageActivity(
+        _ disks: [UInt64: DiskCounters], over seconds: Double?, totals: inout ActivityReadings
+    ) -> StorageActivity {
+        var busiest = StorageActivity()
+        var busiestRank: (Double, UInt64, UInt64)?
+
+        for (id, current) in disks {
+            var activity = StorageActivity(name: (diskNames[id] ?? nil) ?? "")
+            var busyTime = 0.0
+            if let seconds, seconds > 0, let previous = lastDisks[id],
+               current.read >= previous.read, current.written >= previous.written,
+               current.time >= previous.time, current.operations >= previous.operations {
+                activity.read = Double(current.read - previous.read) / seconds
+                activity.write = Double(current.written - previous.written) / seconds
+                busyTime = Double(current.time - previous.time) / 1e9
+                // Requests overlap on a fast drive, so their times can add up
+                // to more than the interval.
+                activity.busy = min(busyTime / seconds, 1)
+                let operations = current.operations - previous.operations
+                activity.latency = operations > 0 ? busyTime / Double(operations) : 0
+                totals.diskRead += activity.read
+                totals.diskWrite += activity.write
+            }
+            // The entry ID only makes the choice stable between equals.
+            let rank = (busyTime, current.time, id)
+            if busiestRank.map({ rank > $0 }) ?? true {
+                busiestRank = rank
+                busiest = activity
+            }
+        }
+        return busiest
+    }
+
+    /// Counters of every physical storage device, keyed by registry entry ID.
+    /// Disk images are left out: what they read and write lands on the device
+    /// that holds the image file and would be counted twice.
+    private func diskCounters() -> [UInt64: DiskCounters] {
         var iterator: io_iterator_t = 0
         guard IOServiceGetMatchingServices(
             kIOMainPortDefault, IOServiceMatching("IOBlockStorageDriver"), &iterator
-        ) == KERN_SUCCESS else { return nil }
+        ) == KERN_SUCCESS else { return [:] }
         defer { IOObjectRelease(iterator) }
 
-        var read: UInt64 = 0
-        var written: UInt64 = 0
-        var found = false
+        var disks: [UInt64: DiskCounters] = [:]
         while case let service = IOIteratorNext(iterator), service != 0 {
             defer { IOObjectRelease(service) }
-            guard let statistics = IORegistryEntryCreateCFProperty(
-                service, "Statistics" as CFString, kCFAllocatorDefault, 0
-            )?.takeRetainedValue() as? [String: Any] else { continue }
-            read += (statistics["Bytes (Read)"] as? NSNumber)?.uint64Value ?? 0
-            written += (statistics["Bytes (Write)"] as? NSNumber)?.uint64Value ?? 0
-            found = true
+            var id: UInt64 = 0
+            guard IORegistryEntryGetRegistryEntryID(service, &id) == KERN_SUCCESS else { continue }
+            if diskNames[id] == nil { diskNames[id] = .some(productName(of: service)) }
+            guard case .some(.some) = diskNames[id],
+                  let statistics = IORegistryEntryCreateCFProperty(
+                      service, "Statistics" as CFString, kCFAllocatorDefault, 0
+                  )?.takeRetainedValue() as? [String: Any]
+            else { continue }
+
+            func counter(_ key: String) -> UInt64 {
+                (statistics[key] as? NSNumber)?.uint64Value ?? 0
+            }
+            disks[id] = DiskCounters(
+                read: counter("Bytes (Read)"),
+                written: counter("Bytes (Write)"),
+                time: counter("Total Time (Read)") + counter("Total Time (Write)"),
+                operations: counter("Operations (Read)") + counter("Operations (Write)")
+            )
         }
-        return found ? (read, written) : nil
+        return disks
+    }
+
+    /// The name the device behind a storage driver reports for itself, empty
+    /// when it reports none; nil for a disk image.
+    private func productName(of service: io_registry_entry_t) -> String? {
+        func inherited(_ key: String) -> [String: Any]? {
+            IORegistryEntrySearchCFProperty(
+                service, kIOServicePlane, key as CFString, kCFAllocatorDefault,
+                IOOptionBits(kIORegistryIterateRecursively | kIORegistryIterateParents)
+            ) as? [String: Any]
+        }
+        let interconnect = inherited("Protocol Characteristics")?["Physical Interconnect"] as? String
+        guard interconnect != "Virtual Interface" else { return nil }
+        return (inherited("Device Characteristics")?["Product Name"] as? String)?
+            .trimmingCharacters(in: .whitespaces) ?? ""
     }
 }

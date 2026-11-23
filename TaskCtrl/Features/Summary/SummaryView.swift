@@ -35,7 +35,7 @@ struct SummaryView: View {
                     NetworkTile(activity: snapshot.activity)
                     DiskTile(activity: snapshot.activity)
                     FansTile(speeds: snapshot.sensors.fanSpeeds)
-                    PressureTile(activity: snapshot.activity)
+                    PressureTile(snapshot: snapshot)
                 }
                 .frame(height: 104)
             }
@@ -502,42 +502,6 @@ private struct FansTile: View {
                     .joined(separator: " · "),
             fraction: (fastest ?? 0) / Self.fullSpeed,
             tint: .orange
-        )
-    }
-}
-
-private struct PressureTile: View {
-    let activity: ActivityReadings
-
-    /// Load per core: 1.0 means every core has exactly one thread waiting for it.
-    private var loadPerCore: Double {
-        activity.loadAverage / Double(max(ProcessInfo.processInfo.activeProcessorCount, 1))
-    }
-
-    private var level: (label: String, tint: Color, fraction: Double) {
-        if activity.memoryPressure == .critical || loadPerCore > 1.5 {
-            return ("HIGH", .red, 1)
-        }
-        if activity.memoryPressure == .warning || loadPerCore > 0.8 {
-            return ("MEDIUM", .yellow, max(loadPerCore / 1.5, 0.55))
-        }
-        return ("LOW", .green, max(loadPerCore / 1.5, 0.05))
-    }
-
-    var body: some View {
-        let level = level
-        let memory = switch activity.memoryPressure {
-        case .normal: "normal"
-        case .warning: "warning"
-        case .critical: "critical"
-        }
-        StatTile(
-            title: "System pressure",
-            symbol: "gauge.with.dots.needle.33percent",
-            value: level.label,
-            detail: "Load \(activity.loadAverage.formatted(.number.precision(.fractionLength(1)))) · Memory \(memory)",
-            fraction: level.fraction,
-            tint: level.tint
         )
     }
 }

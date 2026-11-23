@@ -50,6 +50,8 @@ struct StatTile: View {
     let detail: String
     let fraction: Double
     let tint: Color
+    /// Colours along the meter from empty to full, in place of the tint.
+    var scale: [Color] = []
 
     var body: some View {
         Panel(tint: tint) {
@@ -72,7 +74,7 @@ struct StatTile: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                SegmentMeter(fraction: fraction, tint: tint, segments: 22, axis: .horizontal)
+                SegmentMeter(fraction: fraction, tint: tint, segments: 22, axis: .horizontal, scale: scale)
                     .frame(height: 14)
             }
         }
