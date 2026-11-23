@@ -13,7 +13,8 @@ struct TaskCtrlApp: App {
     @State private var connections = ConnectionsModel()
     @State private var installedApps = InstalledAppsModel()
     @State private var drivers = DriversModel()
-    @AppStorage(MenuBarSettings.isShownKey) private var showsMenuBarReadout = true
+    @AppStorage(MenuBarSettings.showsUsageKey) private var showsMenuBarUsage = true
+    @AppStorage(MenuBarSettings.showsNetworkKey) private var showsMenuBarNetwork = true
 
     var body: some Scene {
         WindowGroup(id: MenuBarMenu.windowID) {
@@ -45,7 +46,12 @@ struct TaskCtrlApp: App {
                 .environment(helper)
         }
 
-        MenuBarExtra(isInserted: $showsMenuBarReadout) {
+        // One item holds both readouts; it is there while either is on.
+        // Dragging it out of the menu bar turns both off.
+        MenuBarExtra(isInserted: Binding(
+            get: { showsMenuBarUsage || showsMenuBarNetwork },
+            set: { if !$0 { showsMenuBarUsage = false; showsMenuBarNetwork = false } }
+        )) {
             MenuBarMenu()
         } label: {
             MenuBarReadout()
