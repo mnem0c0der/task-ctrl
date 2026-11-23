@@ -1,0 +1,63 @@
+name: Release
+
+# Builds the app and publishes it as a GitHub release when a version tag is
+# pushed. The tag is made by scripts/release.sh.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select the newest Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | grep -vi beta | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - name: Check that the tag matches the version
+        run: |
+          version=$(sed -n 's/^ *MARKETING_VERSION: *"\(.*\)"/\1/p' project.yml)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match version $version in project.yml"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Generate the project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      # No signing certificate is available here, so the build is signed
+      # ad hoc. It runs, but macOS will not register the privileged helper
+      # from it; that needs a build signed with a developer team.
+      - name: Build
+        run: |
+          xcodebuild -project TaskCtrl.xcodeproj -scheme TaskCtrl -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            build
+
+      - name: Package
+        run: |
+          ditto -c -k --keepParent build/Build/Products/Release/TaskCtrl.app "TaskCtrl-$VERSION.zip"
+          shasum -a 256 "TaskCtrl-$VERSION.zip" > "TaskCtrl-$VERSION.zip.sha256"
+
+      - name: Write the release notes
+        run: scripts/release-notes.sh "$VERSION" > notes.md
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "TaskCtrl-$VERSION.zip" "TaskCtrl-$VERSION.zip.sha256" \
+            --title "TaskCtrl $VERSION" --notes-file notes.md

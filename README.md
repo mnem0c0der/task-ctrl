@@ -5,6 +5,21 @@ A system monitor and disk analyzer for macOS, written in SwiftUI.
 Tabs: Summary, Performance, Processes, Sensors, Apple Silicon, Connections,
 System Info, Startup apps, Users, Services, Installed Apps, Drivers and Disk Space.
 
+## Download
+
+Ready-made builds are on the [Releases](https://github.com/mnem0c0der/task-ctrl/releases)
+page, with what changed in each. They need macOS 15 or later on Apple Silicon.
+
+The builds are not notarized, so macOS blocks the first launch. After moving
+the app to Applications, clear the download flag once:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/TaskCtrl.app
+```
+
+A downloaded build cannot install the privileged helper; for that, build
+from source with your own developer team, as described below.
+
 ## Requirements
 
 - macOS 15 or later (developed and tested on Apple Silicon)
@@ -87,6 +102,9 @@ Both are optional; the app works without them and says what is missing.
 | Path | What is in it |
 | --- | --- |
 | `project.yml` | The project definition. `TaskCtrl.xcodeproj` is generated from it. |
+| `CHANGELOG.md` | What changed in each release. |
+| `scripts` | Cutting a release, and drawing the app icon. |
+| `.github/workflows` | What GitHub runs to build and publish a release. |
 | `TaskCtrl/App` | App entry point and the sidebar. |
 | `TaskCtrl/Features` | One folder per tab: the views. |
 | `TaskCtrl/Monitoring`, `Disk`, `Network`, `Startup`, … | Models and samplers behind the tabs. |
@@ -105,12 +123,33 @@ Both are optional; the app works without them and says what is missing.
 - **A new tab.** Add a case to the sidebar enum in `TaskCtrl/App/RootView.swift`,
   give it a symbol and a view there, and put the view in a new folder under
   `TaskCtrl/Features`.
+- **A change to the app icon.** The icon is drawn in code. Edit
+  `scripts/make-icon.swift` and run `swift scripts/make-icon.swift`; it rewrites
+  every size in `TaskCtrl/Resources/Assets.xcassets`. Commit the images with it.
 - **A build setting.** Change `project.yml` and regenerate. Do not edit the
   Xcode project by hand: the next `xcodegen generate` overwrites it.
 - **A new call to the helper.** Declare it in `Shared/HelperProtocol.swift`,
   implement it in `Helper/main.swift`, call it through
   `TaskCtrl/Helper/HelperClient.swift`, and raise the helper version in
   `Shared/HelperProtocol.swift` so that installed copies are reported as outdated.
+
+## Releasing
+
+Versions follow `major.minor.patch`. The version number lives in `project.yml`
+as `MARKETING_VERSION`.
+
+1. Describe the release in `CHANGELOG.md` under a new `## <version>` heading
+   and commit it.
+2. Run the release script with the new version:
+
+   ```bash
+   scripts/release.sh 0.2.0
+   ```
+
+The script sets the version, commits, makes the tag `v0.2.0` and pushes it.
+The tag starts a build on GitHub, which publishes `TaskCtrl-0.2.0.zip` and its
+checksum on the Releases page, with the changelog section as the notes. The
+build takes a few minutes; its progress is on the repository's Actions page.
 
 ## Notes
 
