@@ -25,6 +25,7 @@
 		4D7945428B3CDA6BF439116A /* DiskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02904A54342D8B6D4279C229 /* DiskView.swift */; };
 		5108EAA29B333CAAC6C25D6B /* SystemSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE4B39E2AD42AE83F31B6A06 /* SystemSampler.swift */; };
 		526235E4E83542620FA31248 /* DashboardComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 339C804F9EB87A0DBC6175E0 /* DashboardComponents.swift */; };
+		5351045099A863BBA47FEA19 /* ProcessCommandLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57DCEDE3480684FBBDE51C7D /* ProcessCommandLine.swift */; };
 		55BB0B49C5F1A8C49117B180 /* Formatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7BD8F2A84D8B3E302BE8E78 /* Formatting.swift */; };
 		577777599BF8D4B417E1DEC5 /* PerformanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B62E7B2F0CAB615DFD35E8 /* PerformanceView.swift */; };
 		61AB7B67E66C4FDD24F49592 /* SystemInfoModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF7490139119CF025385EDE /* SystemInfoModel.swift */; };
@@ -47,6 +48,7 @@
 		9A6DD438C79D7AA13CF9A51D /* SensorTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 247FC176814D46BFF2FEA64E /* SensorTree.swift */; };
 		9FA39D918BC9E3180F21B363 /* HelperClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B1993D67165E2010E9A21E /* HelperClient.swift */; };
 		A6E0888E836ACDE829AB94C8 /* SystemInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE4AC44EDB35F2B4839F7F0 /* SystemInfoView.swift */; };
+		A6FA3E5ED91D3FE1487EDB31 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E115493BE8695CE62C0A8E26 /* Assets.xcassets */; };
 		A77BC4E579665B1E466425FA /* StartupItemsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D82EAB01D49468F601086F /* StartupItemsModel.swift */; };
 		AD9EE171B3758221B1222702 /* AdminAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1897BDEED97C53D05D31C3B /* AdminAuthorization.swift */; };
 		B22F65176990B77D78FBD3F0 /* dev.taskctrl.helper.plist in CopyFiles */ = {isa = PBXBuildFile; fileRef = 0A073F742D4FD4C2320D15C4 /* dev.taskctrl.helper.plist */; };
@@ -127,6 +129,7 @@
 		48BA60938D95968A31974615 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		4B13C1D30DC76B4FF9958668 /* AppleSiliconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSiliconView.swift; sourceTree = "<group>"; };
 		53B62E7B2F0CAB615DFD35E8 /* PerformanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceView.swift; sourceTree = "<group>"; };
+		57DCEDE3480684FBBDE51C7D /* ProcessCommandLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessCommandLine.swift; sourceTree = "<group>"; };
 		5967E7B2765CF6FA9BBE5AD9 /* UserAccount.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAccount.swift; sourceTree = "<group>"; };
 		5ED87FC1AE284F1C144623D1 /* ProcessNetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessNetworkMonitor.swift; sourceTree = "<group>"; };
 		5EF06793C2760DE4E3749771 /* PerformanceDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceDetails.swift; sourceTree = "<group>"; };
@@ -163,6 +166,7 @@
 		DA7E7C6131AB40B99F3E66B4 /* FileCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileCategory.swift; sourceTree = "<group>"; };
 		DE4B39E2AD42AE83F31B6A06 /* SystemSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSampler.swift; sourceTree = "<group>"; };
 		E00B62E337AC89287C5C85D4 /* Launchd.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Launchd.swift; sourceTree = "<group>"; };
+		E115493BE8695CE62C0A8E26 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E4A6FD8F9E2DB4E785B1235C /* NeuralEngineReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeuralEngineReader.swift; sourceTree = "<group>"; };
 		E7D82EAB01D49468F601086F /* StartupItemsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupItemsModel.swift; sourceTree = "<group>"; };
 		E94882709DA6C5AC2526A18A /* ProcessesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessesView.swift; sourceTree = "<group>"; };
@@ -179,6 +183,7 @@
 		0CE68A913117BB319F171010 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				E115493BE8695CE62C0A8E26 /* Assets.xcassets */,
 				0A073F742D4FD4C2320D15C4 /* dev.taskctrl.helper.plist */,
 			);
 			path = Resources;
@@ -213,6 +218,7 @@
 				8463F67632E79DD26408EB73 /* MediaEngineReader.swift */,
 				A0383606A7504FDEF9CA3A23 /* Models.swift */,
 				E4A6FD8F9E2DB4E785B1235C /* NeuralEngineReader.swift */,
+				57DCEDE3480684FBBDE51C7D /* ProcessCommandLine.swift */,
 				B56BD789291FD4C253CBAC45 /* ProcessControl.swift */,
 				5ED87FC1AE284F1C144623D1 /* ProcessNetworkMonitor.swift */,
 				4481F10F9D159C46F6F7457F /* SensorSampler.swift */,
@@ -519,6 +525,7 @@
 			buildConfigurationList = 9264F78AE0F9CEF6C7A79F3F /* Build configuration list for PBXNativeTarget "TaskCtrl" */;
 			buildPhases = (
 				40AB034A9BC3FF9E3135EF85 /* Sources */,
+				08864F50899510C6F46117DE /* Resources */,
 				8DAD2B4F92C8936D3ED3C19B /* CopyFiles */,
 				A78C2A63223CA19B884685FB /* Embed Dependencies */,
 			);
@@ -573,6 +580,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		08864F50899510C6F46117DE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A6FA3E5ED91D3FE1487EDB31 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		40AB034A9BC3FF9E3135EF85 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -613,6 +631,7 @@
 				7A462D41E95E876D3D4D3CCB /* PerformanceDetails.swift in Sources */,
 				577777599BF8D4B417E1DEC5 /* PerformanceView.swift in Sources */,
 				8CA0FFB311EC392B7058FEAD /* PressureView.swift in Sources */,
+				5351045099A863BBA47FEA19 /* ProcessCommandLine.swift in Sources */,
 				B41D2278BEE7B8A1CA962DE4 /* ProcessControl.swift in Sources */,
 				F69A20CDFBBA2D431B148EAB /* ProcessIcon.swift in Sources */,
 				F49A5D033C9455AF568076B8 /* ProcessNetworkMonitor.swift in Sources */,

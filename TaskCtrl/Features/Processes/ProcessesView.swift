@@ -58,6 +58,9 @@ struct ProcessesView: View {
     @AppStorage("smoothCPUSorting") private var sortsSmoothly = true
     @AppStorage("showExitedProcesses") private var showsExited = true
     @State private var order = OrderMemory()
+    /// Which columns are shown and in what order; changed from the menu on
+    /// the table header and kept between launches.
+    @AppStorage("processColumns") private var columns = TableColumnCustomization<Row>()
     @State private var pendingAction: PendingAction?
     @State private var errorMessage: String?
 
@@ -279,6 +282,136 @@ struct ProcessesView: View {
         return process.uid == currentUID || helper.isEnabled
     }
 
+    // MARK: Columns
+
+    // The columns are declared in three lots: a table takes at most ten in
+    // one list, and the compiler gives up on a single long one.
+
+    @TableColumnBuilder<Row, KeyPathComparator<Row>>
+    private var identityColumns: some TableColumnContent<Row, KeyPathComparator<Row>> {
+        TableColumn("Name", value: \.process.name) { row in
+            let process = row.process
+            HStack(spacing: 6) {
+                ProcessIcon(path: process.path)
+                Text(process.name)
+                    .lineLimit(1)
+                    .foregroundStyle(process.hasExited ? .red : .primary)
+                if process.hasExited {
+                    Text("exited")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                if row.descendantCount > 0 {
+                    // The figures in this row cover the whole group.
+                    Text("+\(row.descendantCount)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .help("Totals include \(row.descendantCount) child processes")
+                }
+            }
+        }
+        .width(min: 180, ideal: 260)
+        .customizationID("name")
+        // A row without its name says nothing.
+        .disabledCustomizationBehavior(.visibility)
+
+        TableColumn("PID", value: \.process.pid) { row in
+            let process = row.process
+            Text(verbatim: String(process.pid))
+                .monospacedDigit()
+        }
+        .width(min: 50, ideal: 70, max: 90)
+        .customizationID("pid")
+
+        TableColumn("User", value: \.process.user)
+            .width(min: 60, ideal: 110, max: 160)
+            .customizationID("user")
+    }
+
+    @TableColumnBuilder<Row, KeyPathComparator<Row>>
+    private var usageColumns: some TableColumnContent<Row, KeyPathComparator<Row>> {
+        TableColumn("CPU", value: \.process.cpu) { row in
+            let process = row.process
+            Text(process.hasStats ? (process.cpu / 100).percentFormatted : "—")
+                .monospacedDigit()
+                .foregroundStyle(process.hasStats && !process.hasExited ? .primary : .tertiary)
+                .modifier(ChangeHighlight(heat: process.cpuHeat))
+        }
+        .width(min: 60, ideal: 80, max: 110)
+        .customizationID("cpu")
+
+        TableColumn("Memory", value: \.process.memory) { row in
+            let process = row.process
+            Text(process.hasStats ? process.memory.memoryFormatted : "—")
+                .monospacedDigit()
+                .foregroundStyle(process.hasStats && !process.hasExited ? .primary : .tertiary)
+                .modifier(ChangeHighlight(heat: process.memoryHeat))
+        }
+        .width(min: 80, ideal: 100, max: 130)
+        .customizationID("memory")
+
+        TableColumn("Threads", value: \.process.threads) { row in
+            let process = row.process
+            Text(process.threads > 0 ? String(process.threads) : "—")
+                .monospacedDigit()
+                .foregroundStyle(process.threads > 0 ? .primary : .tertiary)
+        }
+        .width(min: 50, ideal: 64, max: 80)
+        .customizationID("threads")
+
+        TableColumn("Disk read", value: \.process.diskRead) { row in
+            let process = row.process
+            rate(process.diskRead, known: process.hasStats)
+        }
+        .width(min: 70, ideal: 90, max: 120)
+        .customizationID("diskRead")
+
+        TableColumn("Disk write", value: \.process.diskWrite) { row in
+            let process = row.process
+            rate(process.diskWrite, known: process.hasStats)
+        }
+        .width(min: 70, ideal: 90, max: 120)
+        .customizationID("diskWrite")
+    }
+
+    @TableColumnBuilder<Row, KeyPathComparator<Row>>
+    private var otherColumns: some TableColumnContent<Row, KeyPathComparator<Row>> {
+        TableColumn("Network", value: \.process.network) { row in
+            let process = row.process
+            rate(process.network, known: true)
+        }
+        .width(min: 70, ideal: 90, max: 120)
+        .customizationID("network")
+
+        TableColumn("Power", value: \.process.power) { row in
+            let process = row.process
+            Text(process.hasStats ? process.power.smallPowerFormatted : "—")
+                .monospacedDigit()
+                .foregroundStyle(process.hasStats && process.power >= 0.001 ? .primary : .tertiary)
+        }
+        .width(min: 60, ideal: 76, max: 100)
+        .customizationID("power")
+
+        TableColumn("Status") { row in
+            Text(row.process.hasExited ? "Exited" : "Running")
+                .foregroundStyle(row.process.hasExited ? .red : .primary)
+        }
+        .width(min: 60, ideal: 80, max: 110)
+        .customizationID("status")
+        .defaultVisibility(.hidden)
+
+        TableColumn("Command", value: \.process.path) { row in
+            Text(row.process.path.isEmpty ? "—" : row.process.path)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .foregroundStyle(row.process.path.isEmpty ? .tertiary : .primary)
+                .help(row.process.path)
+        }
+        .width(min: 120, ideal: 260)
+        .customizationID("command")
+        .defaultVisibility(.hidden)
+    }
+
     var body: some View {
         let visible = visibleProcesses
         let _ = forgetStaleOrder()
@@ -286,85 +419,13 @@ struct ProcessesView: View {
         let rows = groups.all
         let _ = remember(rows)
 
-        Table(of: Row.self, selection: rowSelection(in: rows), sortOrder: $sortOrder) {
-            TableColumn("Name", value: \.process.name) { row in
-                let process = row.process
-                HStack(spacing: 6) {
-                    ProcessIcon(path: process.path)
-                    Text(process.name)
-                        .lineLimit(1)
-                        .foregroundStyle(process.hasExited ? .red : .primary)
-                    if process.hasExited {
-                        Text("exited")
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-                    if row.descendantCount > 0 {
-                        // The figures in this row cover the whole group.
-                        Text("+\(row.descendantCount)")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .help("Totals include \(row.descendantCount) child processes")
-                    }
-                }
-            }
-            .width(min: 180, ideal: 260)
-
-            TableColumn("PID", value: \.process.pid) { row in
-                let process = row.process
-                Text(verbatim: String(process.pid))
-                    .monospacedDigit()
-            }
-            .width(min: 50, ideal: 70, max: 90)
-
-            TableColumn("User", value: \.process.user)
-                .width(min: 60, ideal: 110, max: 160)
-
-            TableColumn("CPU", value: \.process.cpu) { row in
-                let process = row.process
-                Text(process.hasStats ? (process.cpu / 100).percentFormatted : "—")
-                    .monospacedDigit()
-                    .foregroundStyle(process.hasStats && !process.hasExited ? .primary : .tertiary)
-                    .modifier(ChangeHighlight(heat: process.cpuHeat))
-            }
-            .width(min: 60, ideal: 80, max: 110)
-
-            TableColumn("Memory", value: \.process.memory) { row in
-                let process = row.process
-                Text(process.hasStats ? process.memory.memoryFormatted : "—")
-                    .monospacedDigit()
-                    .foregroundStyle(process.hasStats && !process.hasExited ? .primary : .tertiary)
-                    .modifier(ChangeHighlight(heat: process.memoryHeat))
-            }
-            .width(min: 80, ideal: 100, max: 130)
-
-            TableColumn("Threads", value: \.process.threads) { row in
-                let process = row.process
-                Text(process.threads > 0 ? String(process.threads) : "—")
-                    .monospacedDigit()
-                    .foregroundStyle(process.threads > 0 ? .primary : .tertiary)
-            }
-            .width(min: 50, ideal: 64, max: 80)
-
-            TableColumn("Disk", value: \.process.disk) { row in
-                let process = row.process
-                rate(process.disk, known: process.hasStats)
-            }
-            .width(min: 70, ideal: 90, max: 120)
-
-            TableColumn("Network", value: \.process.network) { row in
-                let process = row.process
-                rate(process.network, known: true)
-            }
-            .width(min: 70, ideal: 90, max: 120)
-
-            TableColumn("Power", value: \.process.power) { row in
-                let process = row.process
-                Text(process.hasStats ? process.power.smallPowerFormatted : "—")
-                    .monospacedDigit()
-                    .foregroundStyle(process.hasStats && process.power >= 0.001 ? .primary : .tertiary)
-            }
-            .width(min: 60, ideal: 76, max: 100)
+        Table(
+            of: Row.self, selection: rowSelection(in: rows), sortOrder: $sortOrder,
+            columnCustomization: $columns
+        ) {
+            identityColumns
+            usageColumns
+            otherColumns
         } rows: {
             Section {
                 OutlineGroup(groups.applications, children: \.children) { TableRow($0) }
@@ -561,20 +622,25 @@ private struct ProcessDetails: View {
     let process: ProcessSample?
     let parentName: String?
 
+    /// The selected process's command with its arguments, once read.
+    @State private var commandLine: String?
+
     var body: some View {
         Group {
             if let process {
                 VStack(alignment: .leading, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text("\(process.name) (\(String(process.pid)))")
                             .font(.title3.weight(.semibold))
                             .lineLimit(1)
-                        Text(process.path.isEmpty ? "Path not disclosed" : process.path)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .textSelection(.enabled)
+                        CopyableLine(title: "Path", text: process.path)
+                        // Where the system keeps the arguments to itself,
+                        // the path is all there is of the command.
+                        CopyableLine(title: "Command", text: commandLine ?? process.path, isCode: true)
+                    }
+                    // Arguments are read for the selected process only, when it changes.
+                    .task(id: process.pid) {
+                        commandLine = ProcessCommandLine.read(pid: process.pid)
                     }
                     HStack(alignment: .top, spacing: 20) {
                         DetailColumn(title: "Identity", rows: [
@@ -628,6 +694,56 @@ private struct ProcessDetails: View {
     private func uptime(of process: ProcessSample) -> String {
         Duration.seconds(max(Date().timeIntervalSince(process.startDate), 0))
             .formatted(.units(allowed: [.days, .hours, .minutes, .seconds], width: .narrow, maximumUnitCount: 2))
+    }
+}
+
+/// A labelled line of text with a button that copies it.
+private struct CopyableLine: View {
+    let title: String
+    let text: String
+    /// Set for text meant for a terminal, which reads better in a fixed-width face.
+    var isCode = false
+
+    @State private var hasCopied = false
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(title.uppercased())
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
+                .frame(width: 70, alignment: .leading)
+            if text.isEmpty {
+                Text("Not disclosed for this process")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(text)
+                    .font(isCode ? .callout.monospaced() : .callout)
+                    .lineLimit(isCode ? 2 : 1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+                    .help(text)
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                    hasCopied = true
+                } label: {
+                    Label(hasCopied ? "Copied" : "Copy", systemImage: hasCopied ? "checkmark" : "doc.on.doc")
+                        .labelStyle(.iconOnly)
+                }
+                .buttonStyle(.borderless)
+                .help("Copy the \(title.lowercased())")
+                // The tick goes back to the copy sign after a moment, or at
+                // once when the line starts showing something else.
+                .task(id: hasCopied) {
+                    guard hasCopied else { return }
+                    try? await Task.sleep(for: .seconds(1.5))
+                    hasCopied = false
+                }
+                .onChange(of: text) { hasCopied = false }
+            }
+            Spacer(minLength: 0)
+        }
     }
 }
 
