@@ -1,7 +1,11 @@
 import SwiftUI
 
 enum Dashboard {
-    static let panelFill = Color(white: 0.085)
+    /// Behind every page: the standard window background, so the app sits
+    /// next to the sidebar the way other Mac apps do.
+    static let pageFill = Color(nsColor: .windowBackgroundColor)
+    /// Panels are the system's content background, a step darker than the page.
+    static let panelFill = Color(nsColor: .controlBackgroundColor)
     static let readoutFont = Font.system(.title3, design: .monospaced).weight(.bold)
     static let captionFont = Font.system(.caption, design: .monospaced)
 }

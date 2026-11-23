@@ -65,7 +65,7 @@ struct InstalledAppsView: View {
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .background(Color.black)
+        .background(Dashboard.pageFill)
         .searchable(text: $searchText, prompt: "Filter apps")
         .navigationTitle("Installed Apps")
         .navigationSubtitle("\(rows.count) of \(model.apps.count)")

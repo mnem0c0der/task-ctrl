@@ -99,7 +99,7 @@ struct ConnectionsView: View {
             }
         }
         .padding(16)
-        .background(Color.black)
+        .background(Dashboard.pageFill)
         .searchable(text: $searchText, prompt: "Filter connections")
         .navigationTitle("Connections")
         // Reading sockets costs a little, so it runs only while this tab shows.

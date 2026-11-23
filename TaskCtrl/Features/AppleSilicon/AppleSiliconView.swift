@@ -53,7 +53,7 @@ struct AppleSiliconView: View {
             }
             .padding(20)
         }
-        .background(Color.black)
+        .background(Dashboard.pageFill)
         .navigationTitle("Apple Silicon")
     }
 

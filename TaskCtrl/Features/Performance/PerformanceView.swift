@@ -43,8 +43,9 @@ struct PerformanceView: View {
 
         HStack(spacing: 0) {
             ScrollView {
-                VStack(spacing: 4) {
-                    ForEach(PerformanceResource.allCases) { resource in
+                let resources = PerformanceResource.allCases
+                VStack(spacing: 2) {
+                    ForEach(Array(resources.enumerated()), id: \.element) { index, resource in
                         // A real button, so keyboard and VoiceOver can select it too.
                         Button {
                             selection = resource
@@ -59,6 +60,13 @@ struct PerformanceView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityAddTraits(resource == selection ? .isSelected : [])
+
+                        if index < resources.count - 1 {
+                            Divider()
+                                .padding(.horizontal, 10)
+                                // The highlight of the selected row is its own edge.
+                                .opacity(resource == selection || resources[index + 1] == selection ? 0 : 1)
+                        }
                     }
                 }
                 .padding(10)
@@ -81,7 +89,7 @@ struct PerformanceView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .background(Color.black)
+        .background(Dashboard.pageFill)
         .navigationTitle("Performance")
     }
 }

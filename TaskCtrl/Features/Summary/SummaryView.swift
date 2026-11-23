@@ -42,7 +42,7 @@ struct SummaryView: View {
             }
             .padding(16)
         }
-        .background(Color.black)
+        .background(Dashboard.pageFill)
         .navigationTitle("Summary")
         .onChange(of: snapshot.date) {
             // Back to live once the selection has scrolled off the chart.

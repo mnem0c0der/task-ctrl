@@ -73,7 +73,7 @@ struct DiskView: View {
             sidebar
                 .frame(width: 300)
         }
-        .background(Color.black)
+        .background(Dashboard.pageFill)
         .navigationTitle("Disk Space")
         .task { volumes = Volume.mounted() }
         .fileImporter(isPresented: $isChoosingFolder, allowedContentTypes: [.folder]) { result in

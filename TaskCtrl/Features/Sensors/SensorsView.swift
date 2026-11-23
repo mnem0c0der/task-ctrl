@@ -38,7 +38,7 @@ struct SensorsView: View {
                 }
             }
         }
-        .background(Color.black)
+        .background(Dashboard.pageFill)
         .searchable(text: $searchText, prompt: "Filter sensors")
         .navigationTitle("Sensors")
         .toolbar {

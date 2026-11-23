@@ -16,7 +16,7 @@ struct SystemInfoView: View {
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .background(Color.black)
+        .background(Dashboard.pageFill)
         .navigationTitle("System Info")
         .toolbar {
             ToolbarItem {

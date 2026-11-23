@@ -87,7 +87,7 @@ struct DriversView: View {
             }
         }
         .padding(16)
-        .background(Color.black)
+        .background(Dashboard.pageFill)
         .searchable(text: $searchText, prompt: "Filter drivers")
         .navigationTitle("Drivers")
         .task {
