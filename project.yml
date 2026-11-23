@@ -1,0 +1,65 @@
+name: TaskCtrl
+options:
+  bundleIdPrefix: dev.taskctrl
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: 1
+    # The app and the root helper must be signed by the same team: macOS will
+    # not register an ad-hoc signed daemon, and the two check each other's
+    # signature before talking.
+    DEVELOPMENT_TEAM: ASM7M4TH7Q
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: Apple Development
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  TaskCtrl:
+    type: application
+    platform: macOS
+    sources:
+      - path: TaskCtrl
+        excludes:
+          - Resources/dev.taskctrl.helper.plist
+      - path: Shared
+      - path: TaskCtrl/Resources/dev.taskctrl.helper.plist
+        buildPhase:
+          copyFiles:
+            destination: wrapper
+            subpath: Contents/Library/LaunchDaemons
+    dependencies:
+      - target: TaskCtrlHelper
+        embed: true
+        codeSign: false
+        copy:
+          destination: executables
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.taskctrl.TaskCtrl
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        # Distributed outside the App Store: reading other processes and
+        # scanning the whole disk are not possible inside the sandbox.
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_PREVIEWS: YES
+        # Sensor readings come from undocumented system functions.
+        SWIFT_OBJC_BRIDGING_HEADER: TaskCtrl/Support/PrivateAPI.h
+        OTHER_LDFLAGS: -lIOReport
+  TaskCtrlHelper:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Helper
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.taskctrl.TaskCtrl.helper
+        PRODUCT_NAME: TaskCtrlHelper
+        # Embeds an Info.plist in the binary so its code signing identifier
+        # is the bundle identifier the app checks for.
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        SKIP_INSTALL: YES
