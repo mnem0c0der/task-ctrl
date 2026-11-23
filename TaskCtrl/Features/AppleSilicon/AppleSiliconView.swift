@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// The chip seen the way it is built: performance and efficiency clusters
-/// with a chart per core, plus the GPU.
+/// with a chart per core, and the media engine block by block. The GPU has
+/// its own page under Performance.
 struct AppleSiliconView: View {
     @Environment(SystemMonitor.self) private var monitor
 
@@ -16,7 +17,7 @@ struct AppleSiliconView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(hardware.chipName)
                         .font(.system(size: 34, weight: .semibold, design: .rounded))
-                    Text(subtitle)
+                    Text(subtitle(mediaBlocks: snapshot.sensors.mediaEngines.count))
                         .font(.title3)
                         .foregroundStyle(.secondary)
                 }
@@ -29,6 +30,7 @@ struct AppleSiliconView: View {
                         kind: .performance,
                         load: snapshot.cpu.performance,
                         cache: hardware.performanceL2Cache,
+                        clusterSize: hardware.performanceClusterSize,
                         history: history,
                         clusterLoad: { $0.performanceCores }
                     )
@@ -39,12 +41,15 @@ struct AppleSiliconView: View {
                         kind: .efficiency,
                         load: snapshot.cpu.efficiency,
                         cache: hardware.efficiencyL2Cache,
+                        clusterSize: hardware.efficiencyClusterSize,
                         history: history,
                         clusterLoad: { $0.efficiencyCores }
                     )
                 }
 
-                GPUPanel(sensors: snapshot.sensors, history: history)
+                if !snapshot.sensors.mediaEngines.isEmpty {
+                    MediaEnginePanel(blocks: snapshot.sensors.mediaEngines, history: history)
+                }
             }
             .padding(20)
         }
@@ -52,12 +57,13 @@ struct AppleSiliconView: View {
         .navigationTitle("Apple Silicon")
     }
 
-    private var subtitle: String {
+    private func subtitle(mediaBlocks: Int) -> String {
         var parts = [
             "\(hardware.performanceCores) performance cores",
             "\(hardware.efficiencyCores) efficiency cores",
         ]
         if let gpu = hardware.gpuCores { parts.append("\(gpu) GPU cores") }
+        if mediaBlocks > 0 { parts.append("\(mediaBlocks) media engine blocks") }
         return parts.joined(separator: " · ")
     }
 }
@@ -71,6 +77,7 @@ private struct ClusterPanel: View {
     let kind: HardwareInfo.CoreKind
     let load: CPUUsage.Load
     let cache: UInt64?
+    let clusterSize: Int?
     let history: [HistoryPoint]
     let clusterLoad: (HistoryPoint) -> CPUUsage.Load
 
@@ -127,6 +134,7 @@ private struct ClusterPanel: View {
     private var details: String {
         var parts = ["\(coreIndices.count) cores"]
         if let cache { parts.append("\(cache.memoryFormatted) L2 cache") }
+        if let clusterSize { parts.append("\(clusterSize) cores per cluster") }
         return parts.joined(separator: " · ")
     }
 }
@@ -174,45 +182,59 @@ private struct CoreTile: View {
     }
 }
 
-// MARK: - GPU
+// MARK: - Media engine
 
-private struct GPUPanel: View {
-    let sensors: SensorReadings
+/// A chart for each of the chip's video, scaler and codec blocks.
+private struct MediaEnginePanel: View {
+    let blocks: [MediaEngineReading]
     let history: [HistoryPoint]
 
-    var body: some View {
-        let hardware = HardwareInfo.shared
+    private static let tint = Color.orange
 
-        Panel(tint: .orange) {
+    var body: some View {
+        // The busiest block stands for the whole engine.
+        let busiest = blocks.map(\.active).max() ?? 0
+
+        Panel(tint: Self.tint) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Image(systemName: "display")
+                    Image(systemName: "film")
                         .font(.title2)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Self.tint)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("GPU")
+                        Text("Media Engine")
                             .font(.title3.weight(.semibold))
-                        Text([
-                            hardware.gpuCores.map { "\($0) cores" },
-                            sensors.gpuMemory.map { "\($0.memoryFormatted) in use" },
-                            sensors.gpuPower.map { $0.powerFormatted },
-                        ].compactMap { $0 }.joined(separator: " · "))
+                        Text("\(blocks.count) blocks")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Text(sensors.gpuUtilization?.percentFormatted ?? "—")
+                    Text(busiest.percentFormatted)
                         .font(.title2.monospacedDigit().weight(.semibold))
-                        .foregroundStyle(.orange)
-                        .contentTransition(.numericText())
+                        .foregroundStyle(Self.tint)
                 }
-                SeriesChart(
-                    title: "% Utilization",
-                    points: history,
-                    series: [ChartSeries(name: "Utilization", tint: .green) { $0.gpu }],
-                    tint: .orange
-                )
-                .frame(height: 170)
+
+                Text("% Active residency by block")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12)], spacing: 12) {
+                    ForEach(blocks) { block in
+                        MiniChart(
+                            title: block.name,
+                            value: block.active.percentFormatted,
+                            points: history,
+                            series: ChartSeries(name: block.name, tint: .green) { $0.mediaEngines[block.name] },
+                            tint: Self.tint
+                        )
+                        .frame(height: 120)
+                    }
+                }
+
+                Text("Active residency is the share of time a block was kept above its idle voltage: it was in use, not how much of it.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

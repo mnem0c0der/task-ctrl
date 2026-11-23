@@ -22,7 +22,17 @@ struct SensorReadings: Sendable, Equatable {
 
     /// 0...1.
     var gpuUtilization: Double?
+    /// The two stages of the GPU's pipeline: the tiler sorts geometry into
+    /// tiles, the renderer shades them. 0...1.
+    var gpuRenderer: Double?
+    var gpuTiler: Double?
     var gpuMemory: UInt64?
+    /// The chip's media blocks: video encoders and decoders, scalers, JPEG
+    /// and ProRes codecs. Empty when it reports none.
+    var mediaEngines: [MediaEngineReading] = []
+
+    /// Nil on a Mac without a Neural Engine.
+    var neuralEngine: NeuralEngineReadings?
 }
 
 struct TemperatureSensor: Sendable, Equatable {
@@ -48,9 +58,12 @@ final class SensorSampler {
     private let temperatures = TemperatureReader()
     private let energy = EnergyReader()
     private let gpu = GPUReader()
+    private let neuralEngine = NeuralEngineReader()
+    private let mediaEngines = MediaEngineReader()
 
     func sample() -> SensorReadings {
         var readings = SensorReadings()
+        readings.neuralEngine = neuralEngine?.read()
 
         temperatures?.read(into: &readings)
 
@@ -71,8 +84,11 @@ final class SensorSampler {
 
         if let usage = gpu?.read() {
             readings.gpuUtilization = usage.utilization
+            readings.gpuRenderer = usage.renderer
+            readings.gpuTiler = usage.tiler
             readings.gpuMemory = usage.memory
         }
+        readings.mediaEngines = mediaEngines?.read() ?? []
         return readings
     }
 }
@@ -162,13 +178,19 @@ private final class GPUReader {
         IOObjectRelease(service)
     }
 
-    func read() -> (utilization: Double?, memory: UInt64?)? {
+    func read() -> (utilization: Double?, renderer: Double?, tiler: Double?, memory: UInt64?)? {
         guard let statistics = IORegistryEntryCreateCFProperty(
             service, "PerformanceStatistics" as CFString, kCFAllocatorDefault, 0
         )?.takeRetainedValue() as? [String: Any] else { return nil }
 
-        let percent = (statistics["Device Utilization %"] as? NSNumber)?.doubleValue
-        let memory = (statistics["In use system memory"] as? NSNumber)?.uint64Value
-        return (percent.map { min(max($0 / 100, 0), 1) }, memory)
+        func fraction(_ key: String) -> Double? {
+            (statistics[key] as? NSNumber).map { min(max($0.doubleValue / 100, 0), 1) }
+        }
+        return (
+            fraction("Device Utilization %"),
+            fraction("Renderer Utilization %"),
+            fraction("Tiler Utilization %"),
+            (statistics["In use system memory"] as? NSNumber)?.uint64Value
+        )
     }
 }

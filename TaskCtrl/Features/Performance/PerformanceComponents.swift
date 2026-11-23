@@ -72,6 +72,33 @@ struct SeriesChart: View {
     }
 }
 
+/// Smaller framed chart of one figure, with its name and current value above it.
+struct MiniChart: View {
+    let title: String
+    let value: String
+    let points: [HistoryPoint]
+    let series: ChartSeries
+    var tint: Color = .cyan
+    var domain: ClosedRange<Double> = 0...1
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .font(.callout.weight(.semibold))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Text(value)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            ScrollingChart(lines: [series.line(over: points, domain: domain)], tint: tint)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// Big number with a small caption above, for the headline figures.
 struct StatValue: View {
     let title: String

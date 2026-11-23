@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum PerformanceResource: String, CaseIterable, Identifiable {
-    case cpu, memory, disk, network, gpu, energy, thermals
+    case cpu, memory, disk, network, gpu, npu, energy, thermals
 
     var id: Self { self }
 
@@ -12,6 +12,7 @@ enum PerformanceResource: String, CaseIterable, Identifiable {
         case .disk: "internaldrive"
         case .network: "network"
         case .gpu: "display"
+        case .npu: "brain"
         case .energy: "bolt.circle"
         case .thermals: "thermometer.medium"
         }
@@ -24,6 +25,7 @@ enum PerformanceResource: String, CaseIterable, Identifiable {
         case .disk: .mint
         case .network: .blue
         case .gpu: .cyan
+        case .npu: .orange
         case .energy: .red
         case .thermals: .orange
         }
@@ -72,6 +74,7 @@ struct PerformanceView: View {
                 case .disk: DiskDetail(snapshot: snapshot, history: history)
                 case .network: NetworkDetail(snapshot: snapshot, history: history)
                 case .gpu: GPUDetail(snapshot: snapshot, history: history)
+                case .npu: NPUDetail(snapshot: snapshot, history: history)
                 case .energy: EnergyDetail(snapshot: snapshot, history: history)
                 case .thermals: ThermalsDetail(snapshot: snapshot, history: history)
                 }
@@ -142,6 +145,14 @@ struct ResourceSummary {
                 sensors.gpuUtilization?.percentFormatted ?? "—",
             ]
             series = [ChartSeries(name: "Utilization", tint: .green) { $0.gpu }]
+            domain = 0...1
+        case .npu:
+            title = "NPU"
+            lines = [
+                "Apple Neural Engine",
+                sensors.neuralEngine?.active.percentFormatted ?? "—",
+            ]
+            series = [ChartSeries(name: "Powered", tint: .yellow) { $0.neuralEngine }]
             domain = 0...1
         case .energy:
             title = "Energy"

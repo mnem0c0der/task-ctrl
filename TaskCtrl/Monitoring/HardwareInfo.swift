@@ -20,8 +20,15 @@ struct HardwareInfo: Sendable {
     let performanceL2Cache: UInt64?
     let efficiencyL1Cache: UInt64?
     let efficiencyL2Cache: UInt64?
+    /// How many cores share an L2 cache, which is what makes a cluster.
+    let performanceClusterSize: Int?
+    let efficiencyClusterSize: Int?
     let gpuName: String?
     let gpuCores: Int?
+    /// Nil on a Mac without a Neural Engine.
+    let neuralEngineCores: Int?
+    /// The engine's hardware generation as the driver names it, e.g. "h15g".
+    let neuralEngineArchitecture: String?
     let ssdModel: String?
     let bootDate: Date?
 
@@ -41,12 +48,17 @@ struct HardwareInfo: Sendable {
         performanceL2Cache = Self.integer("hw.perflevel0.l2cachesize")
         efficiencyL1Cache = Self.sum("hw.perflevel1.l1dcachesize", "hw.perflevel1.l1icachesize")
         efficiencyL2Cache = Self.integer("hw.perflevel1.l2cachesize")
+        performanceClusterSize = Self.integer("hw.perflevel0.cpusperl2").map(Int.init)
+        efficiencyClusterSize = Self.integer("hw.perflevel1.cpusperl2").map(Int.init)
 
         coreKinds = Self.readCoreKinds(logicalCores: logicalCores)
 
         let gpu = Self.properties(ofFirst: "IOAccelerator")
         gpuName = gpu?["model"] as? String
         gpuCores = (gpu?["gpu-core-count"] as? NSNumber)?.intValue
+        let neuralEngine = Self.properties(ofFirst: "H11ANEIn")?["DeviceProperties"] as? [String: Any]
+        neuralEngineCores = (neuralEngine?["ANEDevicePropertyNumANECores"] as? NSNumber)?.intValue
+        neuralEngineArchitecture = neuralEngine?["ANEDevicePropertyTypeANEArchitectureTypeStr"] as? String
         ssdModel = (Self.properties(ofFirst: "IONVMeController")?["Model Number"] as? String)?
             .trimmingCharacters(in: .whitespaces)
 

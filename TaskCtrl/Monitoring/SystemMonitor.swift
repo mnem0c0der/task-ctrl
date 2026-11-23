@@ -67,6 +67,13 @@ final class SystemMonitor {
                 kernel: new.cpu.system,
                 memory: new.memory.fraction,
                 gpu: new.sensors.gpuUtilization,
+                gpuRenderer: new.sensors.gpuRenderer,
+                gpuTiler: new.sensors.gpuTiler,
+                gpuMemory: new.sensors.gpuMemory.map(Double.init),
+                mediaEngines: Dictionary(
+                    new.sensors.mediaEngines.map { ($0.name, $0.active) }, uniquingKeysWith: { first, _ in first }
+                ),
+                neuralEngine: new.sensors.neuralEngine?.active,
                 temperature: new.sensors.chipTemperature,
                 power: new.sensors.systemPower,
                 performanceCores: new.cpu.performance,

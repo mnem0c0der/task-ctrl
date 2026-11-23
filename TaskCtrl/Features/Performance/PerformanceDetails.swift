@@ -264,9 +264,16 @@ struct GPUDetail: View {
     let snapshot: SystemSnapshot
     let history: [HistoryPoint]
 
+    private enum Mode: String {
+        case overall, engines
+    }
+
+    @AppStorage("gpuChartMode") private var mode: Mode = .overall
+
     var body: some View {
         let sensors = snapshot.sensors
         let hardware = HardwareInfo.shared
+        let memory = "\(sensors.gpuMemory?.memoryFormatted ?? "—") / \(snapshot.memory.total.memoryFormatted)"
 
         DetailPage(
             title: "GPU",
@@ -276,26 +283,181 @@ struct GPUDetail: View {
             fraction: sensors.gpuUtilization ?? 0,
             tint: .cyan
         ) {
-            SeriesChart(
-                title: "Utilization",
+            HStack {
+                Text(mode == .overall ? "% Utilization" : "% Utilization by engine")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Picker("Utilization chart", selection: $mode) {
+                    Text("Overall").tag(Mode.overall)
+                    Text("Engines").tag(Mode.engines)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+            }
+
+            Group {
+                switch mode {
+                case .overall:
+                    SeriesChart(
+                        title: "Utilization",
+                        points: history,
+                        series: [ChartSeries(name: "Utilization", tint: .green) { $0.gpu }],
+                        tint: .cyan
+                    )
+                case .engines:
+                    HStack(spacing: 12) {
+                        MiniChart(
+                            title: "Renderer",
+                            value: sensors.gpuRenderer?.percentFormatted ?? "—",
+                            points: history,
+                            series: ChartSeries(name: "Renderer", tint: .green) { $0.gpuRenderer }
+                        )
+                        MiniChart(
+                            title: "Tiler",
+                            value: sensors.gpuTiler?.percentFormatted ?? "—",
+                            points: history,
+                            series: ChartSeries(name: "Tiler", tint: .green) { $0.gpuTiler }
+                        )
+                    }
+                }
+            }
+            .frame(height: 220)
+
+            MiniChart(
+                title: "GPU memory in use",
+                value: memory,
                 points: history,
-                series: [ChartSeries(name: "Utilization", tint: .green) { $0.gpu }],
-                tint: .cyan
+                series: ChartSeries(name: "Memory", tint: .blue) { $0.gpuMemory },
+                domain: 0...Double(max(snapshot.memory.total, 1))
             )
-            .frame(height: 280)
+            .frame(height: 110)
+
+            // The blocks that work on video; the Apple Silicon tab has all of them.
+            let video = sensors.mediaEngines.filter { [.videoEncode, .videoDecode, .scaler].contains($0.kind) }
+            if !video.isEmpty {
+                mediaEngines(video)
+            }
 
             HStack(alignment: .top) {
                 StatValue(title: "Utilization", value: sensors.gpuUtilization?.percentFormatted ?? "—")
-                StatValue(title: "Memory in use", value: sensors.gpuMemory?.memoryFormatted ?? "—")
+                StatValue(title: "Memory usage", value: memory)
                 StatValue(title: "Power", value: sensors.gpuPower?.powerFormatted ?? "—")
+                StatValue(title: "Temperature", value: temperature(sensors)?.temperatureFormatted ?? "—")
+            }
+        }
+    }
+
+    /// Two charts to a row.
+    private func mediaEngines(_ engines: [MediaEngineReading]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Media engine active residency")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            Grid(horizontalSpacing: 12, verticalSpacing: 12) {
+                ForEach(Array(stride(from: 0, to: engines.count, by: 2)), id: \.self) { first in
+                    GridRow {
+                        ForEach(first..<min(first + 2, engines.count), id: \.self) { index in
+                            MiniChart(
+                                title: "\(engines[index].name) active",
+                                value: engines[index].active.percentFormatted,
+                                points: history,
+                                series: ChartSeries(name: engines[index].name, tint: .green) {
+                                    $0.mediaEngines[engines[index].name]
+                                }
+                            )
+                            .frame(height: 100)
+                        }
+                    }
+                }
+            }
+            Text("Active residency is time above the idle voltage floor: the engine was in use, not how much of it.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// The GPU's own sensors where the Mac names them, the chip otherwise.
+    private func temperature(_ sensors: SensorReadings) -> Double? {
+        let own = sensors.temperatures.filter { $0.name.localizedCaseInsensitiveContains("gpu") }.map(\.value)
+        return own.isEmpty ? sensors.chipTemperature : own.reduce(0, +) / Double(own.count)
+    }
+}
+
+// MARK: - NPU
+
+struct NPUDetail: View {
+    let snapshot: SystemSnapshot
+    let history: [HistoryPoint]
+
+    var body: some View {
+        let engine = snapshot.sensors.neuralEngine
+        let hardware = HardwareInfo.shared
+        let facts = [
+            hardware.neuralEngineCores.map { "\($0) cores" },
+            hardware.neuralEngineArchitecture,
+        ].compactMap { $0 }
+
+        DetailPage(
+            title: "NPU",
+            subtitle: (["Apple Neural Engine"]
+                + (engine.map { ["\($0.blocks) hardware block\($0.blocks == 1 ? "" : "s")"] } ?? [])
+                + facts).joined(separator: " · "),
+            value: engine?.active.percentFormatted ?? "—",
+            fraction: engine?.active ?? 0,
+            tint: .orange
+        ) {
+            SeriesChart(
+                title: "Powered Neural Engine blocks",
+                points: history,
+                series: [ChartSeries(name: "Powered", tint: .yellow) { $0.neuralEngine }],
+                tint: .orange
+            )
+            .frame(height: 300)
+
+            HStack(alignment: .top) {
+                StatValue(title: "Blocks powered", value: engine?.active.percentFormatted ?? "—")
+                StatValue(title: "Power draw", value: engine?.power?.powerFormatted ?? "—")
+                StatValue(
+                    title: "Interval energy",
+                    value: engine?.energy.map { "\(($0 * 1000).formatted(.number.precision(.fractionLength(0)))) mJ" } ?? "—"
+                )
             }
 
-            PropertyGrid(properties: [
-                ("Model", hardware.gpuName ?? "Unavailable"),
-                ("Cores", hardware.gpuCores.map(String.init) ?? "Unavailable"),
-                ("Memory", "Shared with system"),
-            ])
+            VStack(alignment: .leading, spacing: 4) {
+                Text((["ANE"] + facts).joined(separator: " · "))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Text(state(engine))
+                    .font(.title3.weight(.semibold))
+            }
+
+            Label {
+                Text(note(engine))
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "info.circle")
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
         }
+    }
+
+    private func state(_ engine: NeuralEngineReadings?) -> String {
+        guard let engine else { return "Unavailable" }
+        // Powered for most of the last second.
+        return engine.active >= 0.5 ? "Powered on" : "Power gated"
+    }
+
+    private func note(_ engine: NeuralEngineReadings?) -> String {
+        guard let engine else { return "This Mac reports no Neural Engine." }
+        var note = "Blocks powered is the share of the time the Neural Engine was not power gated; it is not compute utilization. The system keeps it on for a few seconds after its last job."
+        if engine.power == nil {
+            note += " Power and energy counters are unavailable on this Mac."
+        }
+        return note
     }
 }
 

@@ -107,6 +107,14 @@ struct HistoryPoint: Identifiable, Sendable {
     let memory: Double
     /// Sensor values; nil while a sensor has no reading.
     var gpu: Double?
+    var gpuRenderer: Double?
+    var gpuTiler: Double?
+    /// Bytes.
+    var gpuMemory: Double?
+    /// Active share of each media block, by the block's name.
+    var mediaEngines: [String: Double] = [:]
+    /// Share of the time the Neural Engine was powered on, 0...1.
+    var neuralEngine: Double?
     var temperature: Double?
     var power: Double?
     var performanceCores = CPUUsage.Load()

@@ -13,6 +13,7 @@
 		09A87A62259E0545ADA07B92 /* TaskCtrlHelper in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = EBF7BF692E36C6BCE7AEAA41 /* TaskCtrlHelper */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		10BE18E66BF5DC2A5A38D8E8 /* DiskAnalyzerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EF5EED7D4868EED7F82777F /* DiskAnalyzerView.swift */; };
 		15E91A2E178A884BF7FDF392 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = B16F6B715E674FF39D2C80D7 /* main.swift */; };
+		196F675DE4C4404C3535917D /* MediaEngineReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8463F67632E79DD26408EB73 /* MediaEngineReader.swift */; };
 		1A599F8896C6C3038EBA585C /* Launchd.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00B62E337AC89287C5C85D4 /* Launchd.swift */; };
 		2962AE013BC3152E9F077735 /* LayerAnimations.swift in Sources */ = {isa = PBXBuildFile; fileRef = D110BC553BF0BB469736956F /* LayerAnimations.swift */; };
 		2A0D55A3DBBE37422DC0BE12 /* HelperStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20B79A1AC5B058287C0579E /* HelperStatusView.swift */; };
@@ -40,6 +41,7 @@
 		8149DAD9ACA3677DD4984991 /* AppleSiliconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B13C1D30DC76B4FF9958668 /* AppleSiliconView.swift */; };
 		8CA0FFB311EC392B7058FEAD /* PressureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A122078FA1A947DEDFE71AD1 /* PressureView.swift */; };
 		93A7CBA9792C731DA37BAF87 /* ProcessesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E94882709DA6C5AC2526A18A /* ProcessesView.swift */; };
+		95F80FC8C5EDF865B106BDAE /* NeuralEngineReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A6FD8F9E2DB4E785B1235C /* NeuralEngineReader.swift */; };
 		97F379713D373FEA4ED76926 /* SystemPressure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B10E2E3003B68B0014F173A /* SystemPressure.swift */; };
 		9A6DD438C79D7AA13CF9A51D /* SensorTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 247FC176814D46BFF2FEA64E /* SensorTree.swift */; };
 		9FA39D918BC9E3180F21B363 /* HelperClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B1993D67165E2010E9A21E /* HelperClient.swift */; };
@@ -133,6 +135,7 @@
 		7B10E2E3003B68B0014F173A /* SystemPressure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemPressure.swift; sourceTree = "<group>"; };
 		7F0C63C9FA89D757D06F6744 /* DriversModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriversModel.swift; sourceTree = "<group>"; };
 		834A9FD1FAC77724AF43672A /* ConnectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionsView.swift; sourceTree = "<group>"; };
+		8463F67632E79DD26408EB73 /* MediaEngineReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaEngineReader.swift; sourceTree = "<group>"; };
 		84FBB18BD913627DD0F5C690 /* TaskCtrlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCtrlApp.swift; sourceTree = "<group>"; };
 		87420BE54B9C57A496193A79 /* TaskCtrl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TaskCtrl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8872493BEABBDECBF166A661 /* PrivateAPI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrivateAPI.h; sourceTree = "<group>"; };
@@ -158,6 +161,7 @@
 		DA7E7C6131AB40B99F3E66B4 /* FileCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileCategory.swift; sourceTree = "<group>"; };
 		DE4B39E2AD42AE83F31B6A06 /* SystemSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSampler.swift; sourceTree = "<group>"; };
 		E00B62E337AC89287C5C85D4 /* Launchd.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Launchd.swift; sourceTree = "<group>"; };
+		E4A6FD8F9E2DB4E785B1235C /* NeuralEngineReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeuralEngineReader.swift; sourceTree = "<group>"; };
 		E7D82EAB01D49468F601086F /* StartupItemsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupItemsModel.swift; sourceTree = "<group>"; };
 		E94882709DA6C5AC2526A18A /* ProcessesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessesView.swift; sourceTree = "<group>"; };
 		EB35A984ABC6CB44E24FE62D /* SMC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMC.swift; sourceTree = "<group>"; };
@@ -204,7 +208,9 @@
 				26BED10698983A667E00C5C0 /* ActivitySampler.swift */,
 				FA28A7A196B159DD7CA33E1C /* EnergyReader.swift */,
 				3CFA6CD05CCB661130B00D54 /* HardwareInfo.swift */,
+				8463F67632E79DD26408EB73 /* MediaEngineReader.swift */,
 				A0383606A7504FDEF9CA3A23 /* Models.swift */,
+				E4A6FD8F9E2DB4E785B1235C /* NeuralEngineReader.swift */,
 				B56BD789291FD4C253CBAC45 /* ProcessControl.swift */,
 				5ED87FC1AE284F1C144623D1 /* ProcessNetworkMonitor.swift */,
 				4481F10F9D159C46F6F7457F /* SensorSampler.swift */,
@@ -588,7 +594,9 @@
 				D999B136D6C321148682DAC0 /* InstalledAppsView.swift in Sources */,
 				1A599F8896C6C3038EBA585C /* Launchd.swift in Sources */,
 				2962AE013BC3152E9F077735 /* LayerAnimations.swift in Sources */,
+				196F675DE4C4404C3535917D /* MediaEngineReader.swift in Sources */,
 				723F705184A2757661D04C66 /* Models.swift in Sources */,
+				95F80FC8C5EDF865B106BDAE /* NeuralEngineReader.swift in Sources */,
 				656F3DE375A0497A1A2F89E6 /* PerformanceComponents.swift in Sources */,
 				7A462D41E95E876D3D4D3CCB /* PerformanceDetails.swift in Sources */,
 				577777599BF8D4B417E1DEC5 /* PerformanceView.swift in Sources */,

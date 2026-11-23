@@ -35,6 +35,7 @@ struct SummaryView: View {
                     NetworkTile(activity: snapshot.activity)
                     DiskTile(activity: snapshot.activity)
                     FansTile(speeds: snapshot.sensors.fanSpeeds)
+                    NeuralEngineTile(readings: snapshot.sensors.neuralEngine)
                     PressureTile(snapshot: snapshot)
                 }
                 .frame(height: 104)
@@ -503,5 +504,29 @@ private struct FansTile: View {
             fraction: (fastest ?? 0) / Self.fullSpeed,
             tint: .orange
         )
+    }
+}
+
+private struct NeuralEngineTile: View {
+    let readings: NeuralEngineReadings?
+
+    var body: some View {
+        StatTile(
+            title: "NPU",
+            symbol: "brain",
+            value: readings.map(\.active.percentFormatted) ?? "—",
+            detail: detail,
+            fraction: readings?.active ?? 0,
+            tint: .yellow
+        )
+        .help("Share of the last second the Neural Engine was powered on. It stays on for a few seconds after its last job, so this is not how hard it is working.")
+    }
+
+    private var detail: String {
+        guard let readings else { return "No Neural Engine reading" }
+        var parts = ["Neural Engine powered on"]
+        if readings.blocks > 1 { parts.insert("\(readings.blocks) blocks", at: 0) }
+        if let power = readings.power { parts.append(power.powerFormatted) }
+        return parts.joined(separator: " · ")
     }
 }

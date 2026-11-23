@@ -35,7 +35,8 @@ struct PressureTile: View {
             showsDetails.toggle()
         } label: {
             StatTile(
-                title: "System pressure",
+                // Short, so that it fits next to "CRITICAL" in a narrow tile.
+                title: "Pressure",
                 symbol: "gauge.with.dots.needle.33percent",
                 value: pressure.level.label.uppercased(),
                 detail: "Queue \(load) · Memory \(memory) · I/O \(busy)",

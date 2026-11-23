@@ -62,6 +62,8 @@ struct StatTile: View {
                     Text(title)
                         .font(.headline)
                         .lineLimit(1)
+                        // In a narrow tile the number shrinks before the title is cut.
+                        .layoutPriority(1)
                     Spacer(minLength: 4)
                     Text(value)
                         .font(.system(.body, design: .monospaced).weight(.bold))
@@ -73,6 +75,7 @@ struct StatTile: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                     .truncationMode(.tail)
                 SegmentMeter(fraction: fraction, tint: tint, segments: 22, axis: .horizontal, scale: scale)
                     .frame(height: 14)
